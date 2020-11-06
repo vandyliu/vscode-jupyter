@@ -33,6 +33,7 @@ import { IDataScience, IDebugLoggingManager } from './datascience/types';
 import { IServiceContainer, IServiceManager } from './ioc/types';
 import { addOutputChannelLogging, setLoggingLevel } from './logging';
 import { registerLoggerTypes } from './logging/serviceRegistry';
+import { registerTypes as registerRemoteTypes } from './remote/serviceRegistry';
 import { setExtensionInstallTelemetryProperties } from './telemetry/extensionInstallTelemetry';
 import { registerTypes as commonRegisterTerminalTypes } from './terminals/serviceRegistry';
 
@@ -115,6 +116,7 @@ async function activateLegacy(
     // Register datascience types after experiments have loaded.
     // To ensure we can register types based on experiments.
     dataScienceRegisterTypes(serviceManager, useVSCodeNotebookAPI, inCustomEditorApiExperiment);
+    registerRemoteTypes(serviceManager);
 
     // Language feature registrations.
     activationRegisterTypes(serviceManager);
