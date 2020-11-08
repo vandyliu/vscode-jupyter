@@ -953,6 +953,26 @@ export namespace DataScience {
     );
 }
 
+export namespace TensorBoard {
+    export const logDirectoryPrompt = localize(
+        'Tensoroard.logDirectoryPrompt',
+        'Specify the TensorBoard log directory'
+    );
+    export const installTensorBoardPrompt = localize(
+        'TensorBoard.installPrompt',
+        'The package TensorBoard is required in order to launch a TensorBoard session. Would you like to install it?'
+    );
+    export const invalidLogDirectory = localize(
+        'TensorBoard.invalidLogDirectory',
+        'Please provide a valid log directory.'
+    );
+    export const logDirectoryPlaceholder = localize('TensorBoard.logDirectoryPlaceholder', 'e.g. /runs/experiment');
+    export const failedToStartSessionError = localize(
+        'TensorBoard.failedToStartSessionError',
+        'We failed to start a TensorBoard session due to the following error: {0}'
+    );
+}
+
 // Skip using vscode-nls and instead just compute our strings based on key values. Key values
 // can be loaded out of the nls.<locale>.json files
 let loadedCollection: Record<string, string> | undefined;

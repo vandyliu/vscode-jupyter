@@ -39,7 +39,8 @@ export enum JupyterProductToInstall {
     notebook = 'notebook',
     kernelspec = 'kernelspec',
     nbconvert = 'nbconvert',
-    pandas = 'pandas'
+    pandas = 'pandas',
+    tensorboard = 'tensorboard'
 }
 
 export type PythonApi = {

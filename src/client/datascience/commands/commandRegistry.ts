@@ -8,7 +8,7 @@ import { CodeLens, ConfigurationTarget, env, Range, Uri } from 'vscode';
 import { DebugProtocol } from 'vscode-debugprotocol';
 import { ICommandNameArgumentTypeMapping } from '../../common/application/commands';
 import { IApplicationShell, ICommandManager, IDebugService, IDocumentManager } from '../../common/application/types';
-import { traceError } from '../../common/logger';
+import { traceError, traceInfo } from '../../common/logger';
 import { IFileSystem } from '../../common/platform/types';
 
 import { IConfigurationService, IDisposable, IOutputChannel } from '../../common/types';
@@ -22,6 +22,8 @@ import { IDataViewerFactory } from '../data-viewing/types';
 import { DataViewerChecker } from '../interactive-common/dataViewerChecker';
 import { IShowDataViewerFromVariablePanel } from '../interactive-common/interactiveWindowTypes';
 import { convertDebugProtocolVariableToIJupyterVariable } from '../jupyter/debuggerVariables';
+import { isPythonNotebook } from '../notebook/helpers/helpers';
+import { TensorBoardSessionProvider } from '../tensorboard/tensorBoardSessionProvider';
 import {
     ICodeWatcher,
     IDataScienceCodeLensProvider,
@@ -60,7 +62,8 @@ export class CommandRegistry implements IDisposable {
         @inject(IJupyterVariableDataProviderFactory)
         private readonly jupyterVariableDataProviderFactory: IJupyterVariableDataProviderFactory,
         @inject(IDataViewerFactory) private readonly dataViewerFactory: IDataViewerFactory,
-        @inject(IJupyterServerUriStorage) private readonly serverUriStorage: IJupyterServerUriStorage
+        @inject(IJupyterServerUriStorage) private readonly serverUriStorage: IJupyterServerUriStorage,
+        @inject(TensorBoardSessionProvider) private tensorBoardSessionProvider: TensorBoardSessionProvider
     ) {
         this.disposables.push(this.serverSelectedCommand);
         this.disposables.push(this.notebookCommands);
@@ -116,6 +119,7 @@ export class CommandRegistry implements IDisposable {
             this.enableLoadingWidgetScriptsFromThirdParty
         );
         this.registerCommand(Commands.ClearSavedJupyterUris, this.clearJupyterUris);
+        this.registerCommand(Commands.LaunchTensorBoard, this.startTensorBoardSessionForCurrentlyActiveNotebook);
         if (this.commandListeners) {
             this.commandListeners.forEach((listener: IDataScienceCommandListener) => {
                 listener.register(this.commandManager);
@@ -509,6 +513,18 @@ export class CommandRegistry implements IDisposable {
                 traceError(e);
                 this.appShell.showErrorMessage(e.toString());
             }
+        }
+    }
+
+    private async startTensorBoardSessionForCurrentlyActiveNotebook() {
+        traceInfo('Received request to start TensorBoard session for currently active notebook');
+        const activeEditor = this.notebookEditorProvider.activeEditor;
+        if (activeEditor && activeEditor.notebook && isPythonNotebook(activeEditor.model.metadata)) {
+            traceInfo('Have active editor');
+            const session = this.tensorBoardSessionProvider.getOrCreate(activeEditor.notebook);
+            await session.initialize();
+        } else {
+            traceInfo('No active editor');
         }
     }
 }

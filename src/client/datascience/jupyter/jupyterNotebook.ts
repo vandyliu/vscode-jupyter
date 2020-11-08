@@ -1377,10 +1377,21 @@ export class JupyterNotebookBase implements INotebook {
         }
     }
 
+    private handleTensorBoardDisplayDataOutput(data: nbformat.IMimeBundle) {
+        if (data.hasOwnProperty('text/html')) {
+            data['text/html'] = (data['text/html'] as string).replace(
+                /new URL\((.*), window.location\)/,
+                'new URL("http://localhost")'
+            );
+        }
+        return data;
+    }
+
     private handleDisplayData(msg: KernelMessage.IDisplayDataMsg, clearState: RefBool, cell: ICell) {
+        const newData = this.handleTensorBoardDisplayDataOutput(msg.content.data);
         const output: nbformat.IDisplayData = {
             output_type: 'display_data',
-            data: msg.content.data,
+            data: newData,
             metadata: msg.content.metadata,
             // tslint:disable-next-line: no-any
             transient: msg.content.transient as any // NOSONAR
