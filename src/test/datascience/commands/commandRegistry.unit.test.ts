@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
+import { TensorBoardSessionProvider } from '../../../client/datascience/tensorboard/tensorBoardSessionProvider';
 import { anything, instance, mock, verify } from 'ts-mockito';
 import { ApplicationShell } from '../../../client/common/application/applicationShell';
 import { CommandManager } from '../../../client/common/application/commandManager';
@@ -45,6 +46,7 @@ suite('DataScience - Commands', () => {
         const dataViewerFactory = mock(DataViewerFactory);
         const fileSystem = mock(FileSystem);
         const serverUriStorage = mock(JupyterServerUriStorage);
+        const tensorBoardSessionProvider = mock(TensorBoardSessionProvider);
 
         commandRegistry = new CommandRegistry(
             documentManager,
@@ -63,7 +65,8 @@ suite('DataScience - Commands', () => {
             instance(fileSystem),
             instance(jupyterVariableDataProviderFactory),
             instance(dataViewerFactory),
-            instance(serverUriStorage)
+            instance(serverUriStorage),
+            instance(tensorBoardSessionProvider)
         );
     });
 

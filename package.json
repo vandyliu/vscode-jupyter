@@ -672,6 +672,11 @@
                 "category": "Jupyter"
             },
             {
+                "command": "jupyter.launchTensorBoard",
+                "title": "%jupyter.command.jupyter.launchTensorBoard.title%",
+                "category": "Jupyter"
+            },
+            {
                 "command": "jupyter.clearSavedJupyterUris",
                 "title": "%jupyter.command.jupyter.clearSavedJupyterUris.title%",
                 "category": "Jupyter"
@@ -1212,6 +1217,10 @@
                     "command": "jupyter.showDataViewer",
                     "category": "Jupyter",
                     "when": "false"
+                },
+                {
+                    "command": "jupyter.launchTensorBoard",
+                    "category": "Jupyter"
                 },
                 {
                     "command": "jupyter.opennotebookInPreviewEditor",

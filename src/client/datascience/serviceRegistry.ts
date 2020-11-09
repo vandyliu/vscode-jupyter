@@ -129,6 +129,7 @@ import { ProgressReporter } from './progress/progressReporter';
 import { RawNotebookProviderWrapper } from './raw-kernel/rawNotebookProviderWrapper';
 import { RawNotebookSupportedService } from './raw-kernel/rawNotebookSupportedService';
 import { StatusProvider } from './statusProvider';
+import { TensorBoardSessionProvider } from './tensorboard/tensorBoardSessionProvider';
 import { ThemeFinder } from './themeFinder';
 import {
     ICellHashListener,
@@ -240,6 +241,7 @@ export function registerTypes(serviceManager: IServiceManager, inNotebookApiExpe
     serviceManager.addSingleton<IKernelFinder>(IKernelFinder, KernelFinder);
     serviceManager.addSingleton<ActiveEditorContextService>(ActiveEditorContextService, ActiveEditorContextService);
     serviceManager.addSingleton<CellOutputMimeTypeTracker>(CellOutputMimeTypeTracker, CellOutputMimeTypeTracker, undefined, [IExtensionSingleActivationService, INotebookExecutionLogger]);
+    serviceManager.addSingleton<TensorBoardSessionProvider>(TensorBoardSessionProvider, TensorBoardSessionProvider);
     serviceManager.addSingleton<CommandRegistry>(CommandRegistry, CommandRegistry);
     serviceManager.addSingleton<DataViewerDependencyService>(DataViewerDependencyService, DataViewerDependencyService);
     serviceManager.addSingleton<ICodeCssGenerator>(ICodeCssGenerator, CodeCssGenerator);
