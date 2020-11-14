@@ -358,6 +358,7 @@ suite('DataScience - JupyterSession', () => {
                         oldSessionShutDown.resolve();
                         return Promise.resolve();
                     });
+                    when(newSession.setName(anything())).thenResolve();
                     when(session.dispose()).thenCall(() => {
                         traceInfo('Shutting down');
                         return Promise.resolve();
@@ -370,6 +371,8 @@ suite('DataScience - JupyterSession', () => {
                     // We should kill session and switch to new session, startig a new restart session.
                     await restartSessionCreatedEvent.promise;
                     await oldSessionShutDown.promise;
+                    // Confirm we renamed the restart session to have a meaningful name (remove `(restart)` suffix).
+                    verify(newSession.setName(anything())).once();
                     verify(session.shutdown()).once();
                     verify(session.dispose()).once();
                     // Confirm kernel isn't restarted.

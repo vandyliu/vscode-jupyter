@@ -79,7 +79,7 @@ export class RemoteFileSystem implements IFileSystemProvider {
 
     private _emitter = new EventEmitter<FileChangeEvent[]>();
     private _bufferedEvents: FileChangeEvent[] = [];
-    private _fireSoonHandle?: NodeJS.Timer;
+    private _fireSoonHandle?: NodeJS.Timer | number;
     private readonly disposables: IDisposable[] = [];
     private jupyterServerConnectionId?: Promise<string>;
 
@@ -97,6 +97,10 @@ export class RemoteFileSystem implements IFileSystemProvider {
         this.rootFolder = Uri.file('/').with({ scheme });
     }
     public dispose() {
+        if (this._fireSoonHandle) {
+            // tslint:disable-next-line: no-any
+            clearTimeout(this._fireSoonHandle as any);
+        }
         this._isDisposed = true;
         this._emitter.dispose();
         this.disposables.forEach((d) => d.dispose());
@@ -175,6 +179,7 @@ export class RemoteFileSystem implements IFileSystemProvider {
         }
     }
 
+    // tslint:disable-next-line: no-empty
     public createDirectory(_uri: Uri): void {}
 
     public watch(_resource: Uri): Disposable {
@@ -183,18 +188,11 @@ export class RemoteFileSystem implements IFileSystemProvider {
     }
     public async createNew(remotePath: Uri, type: 'file' | 'directory' | 'notebook'): Promise<Uri | undefined> {
         const contentManager = await this.getContentManager();
-        try {
-            const model = await contentManager.newUntitled({ type, path: remotePath.fsPath });
-            if (model) {
-                const uri = Uri.file(model.path).with({ scheme: this.scheme });
-                this._fireSoon(
-                    { type: FileChangeType.Created, uri },
-                    { uri: remotePath, type: FileChangeType.Changed }
-                );
-                return uri;
-            }
-        } finally {
-            contentManager.dispose();
+        const model = await contentManager.newUntitled({ type, path: remotePath.fsPath });
+        if (model) {
+            const uri = Uri.file(model.path).with({ scheme: this.scheme });
+            this._fireSoon({ type: FileChangeType.Created, uri }, { uri: remotePath, type: FileChangeType.Changed });
+            return uri;
         }
     }
     private async getJupyterConnectionId(): Promise<string> {
@@ -207,7 +205,7 @@ export class RemoteFileSystem implements IFileSystemProvider {
                     const baseUrl = await this.fileSchemeManager.getAssociatedUrl(this.scheme);
                     if (baseUrl) {
                         // Get the user to log into this.
-                        await this.remoteConnections.addServer(baseUrl);
+                        await this.remoteConnections.addServer(Uri.parse(baseUrl));
                     }
                     servers = await this.remoteConnections.getConnections();
                     server = servers.find((item) => item.fileScheme === this.scheme);
@@ -228,7 +226,7 @@ export class RemoteFileSystem implements IFileSystemProvider {
     }
     private async getContentManager() {
         const jupyterConnectionId = await this.getJupyterConnectionId();
-        const service = await this.remoteConnections.createConnectionManager(jupyterConnectionId);
+        const service = await this.remoteConnections.getServiceManager(jupyterConnectionId);
         return service.contentsManager;
     }
 
@@ -239,13 +237,19 @@ export class RemoteFileSystem implements IFileSystemProvider {
     private async _lookup(uri: Uri, _silent: boolean, fetchContents?: boolean): Promise<Directory | File | undefined> {
         const contentManager = await this.getContentManager();
         try {
-            const item = await contentManager.get(uri.fsPath, { content: fetchContents });
+            // When using VSCode file picker (window.showOpenDialog), the paths contain a trailing `/`.
+            // That trailing `/` causes the Jupyter REST API to fall over (its not valid).
+            const path = uri.fsPath.endsWith('/') ? uri.fsPath.slice(0, -1) : uri.fsPath;
+            const item = await contentManager.get(path, { content: fetchContents });
             if (item.type === 'directory') {
                 return new Directory(item);
             } else {
                 // tslint:disable-next-line: no-any
                 return new File(item as any);
             }
+        } catch (ex) {
+            traceError(`Failed to fetch details of ${uri.fsPath}`, ex);
+            throw ex;
         } finally {
             contentManager.dispose();
         }
@@ -255,7 +259,8 @@ export class RemoteFileSystem implements IFileSystemProvider {
         this._bufferedEvents.push(...events);
 
         if (this._fireSoonHandle) {
-            clearTimeout(this._fireSoonHandle);
+            // tslint:disable-next-line: no-any
+            clearTimeout(this._fireSoonHandle as any);
         }
 
         this._fireSoonHandle = setTimeout(() => {

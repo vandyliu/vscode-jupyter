@@ -29,11 +29,13 @@ import { PythonExtensionChecker } from '../../client/api/pythonApi';
 import { ILanguageServerProvider, IPythonDebuggerPathProvider, IPythonExtensionChecker } from '../../client/api/types';
 import { ApplicationEnvironment } from '../../client/common/application/applicationEnvironment';
 import { ApplicationShell } from '../../client/common/application/applicationShell';
+import { AuthenticationService } from '../../client/common/application/authenticationService';
 import { VSCodeNotebook } from '../../client/common/application/notebook';
 import {
     IApplicationEnvironment,
     IApplicationShell,
     IAuthenticationService,
+    IClipboard,
     ICommandManager,
     ICustomEditorService,
     IDebugService,
@@ -48,6 +50,7 @@ import {
     IWorkspaceService
 } from '../../client/common/application/types';
 import { WebviewPanelProvider } from '../../client/common/application/webviewPanels/webviewPanelProvider';
+import { WebviewViewProvider } from '../../client/common/application/webviewViews/webviewViewProvider';
 import { WorkspaceService } from '../../client/common/application/workspace';
 import { AsyncDisposableRegistry } from '../../client/common/asyncDisposableRegistry';
 import { JupyterSettings } from '../../client/common/configSettings';
@@ -146,9 +149,11 @@ import { DigestStorage } from '../../client/datascience/interactive-ipynb/digest
 import { NativeEditorCommandListener } from '../../client/datascience/interactive-ipynb/nativeEditorCommandListener';
 import { NativeEditorRunByLineListener } from '../../client/datascience/interactive-ipynb/nativeEditorRunByLineListener';
 import { NativeEditorSynchronizer } from '../../client/datascience/interactive-ipynb/nativeEditorSynchronizer';
+import { SystemPseudoRandomNumberGenerator } from '../../client/datascience/interactive-ipynb/randomBytes';
 import { TrustService } from '../../client/datascience/interactive-ipynb/trustService';
 import { InteractiveWindowCommandListener } from '../../client/datascience/interactive-window/interactiveWindowCommandListener';
 import { IPyWidgetMessageDispatcherFactory } from '../../client/datascience/ipywidgets/ipyWidgetMessageDispatcherFactory';
+import { WebviewIPyWidgetCoordinator } from '../../client/datascience/ipywidgets/webviewIPyWidgetCoordinator';
 import { JupyterCommandLineSelector } from '../../client/datascience/jupyter/commandLineSelector';
 import { DebuggerVariableRegistration } from '../../client/datascience/jupyter/debuggerVariableRegistration';
 import { DebuggerVariables } from '../../client/datascience/jupyter/debuggerVariables';
@@ -178,11 +183,14 @@ import { KernelService } from '../../client/datascience/jupyter/kernels/kernelSe
 import { KernelSwitcher } from '../../client/datascience/jupyter/kernels/kernelSwitcher';
 import { KernelVariables } from '../../client/datascience/jupyter/kernelVariables';
 import { NotebookStarter } from '../../client/datascience/jupyter/notebookStarter';
+import { JupyterServerPicker } from '../../client/datascience/jupyter/serverPicker';
 import { ServerPreload } from '../../client/datascience/jupyter/serverPreload';
 import { JupyterServerSelector } from '../../client/datascience/jupyter/serverSelector';
+import { JupyterServerUriStorage } from '../../client/datascience/jupyter/serverUriStorage';
 import { JupyterDebugService } from '../../client/datascience/jupyterDebugService';
 import { JupyterUriProviderRegistration } from '../../client/datascience/jupyterUriProviderRegistration';
 import { KernelDaemonPreWarmer } from '../../client/datascience/kernel-launcher/kernelDaemonPreWarmer';
+import { KernelEnvironmentVariablesService } from '../../client/datascience/kernel-launcher/kernelEnvVarsService';
 import { KernelFinder } from '../../client/datascience/kernel-launcher/kernelFinder';
 import { KernelLauncher } from '../../client/datascience/kernel-launcher/kernelLauncher';
 import { IKernelFinder, IKernelLauncher } from '../../client/datascience/kernel-launcher/types';
@@ -268,6 +276,11 @@ import { IInterpreterService } from '../../client/interpreter/contracts';
 import { IWindowsStoreInterpreter } from '../../client/interpreter/locators/types';
 import { trustDirectoryMigrated } from '../../client/migration/migrateDigestStorage';
 import { PythonEnvironment } from '../../client/pythonEnvironments/info';
+import { RemoteFileSchemeManager } from '../../client/remote/connection/fileSchemeManager';
+import { JupyterServerConnectionService } from '../../client/remote/connection/remoteConnectionsService';
+import { RemoteFileSystemFactory } from '../../client/remote/ui/fileSystemFactory';
+import { NotebookCreator } from '../../client/remote/ui/notebookCreator';
+import { IJupyterServerConnectionService } from '../../client/remote/ui/types';
 import { CodeExecutionHelper } from '../../client/terminals/codeExecution/helper';
 import { ICodeExecutionHelper } from '../../client/terminals/types';
 import { EXTENSION_ROOT_DIR_FOR_TESTS } from '../constants';
@@ -282,6 +295,7 @@ import { MockCommandManager } from './mockCommandManager';
 import { MockCustomEditorService } from './mockCustomEditorService';
 import { MockDebuggerService } from './mockDebugService';
 import { MockDocumentManager } from './mockDocumentManager';
+import { MockEncryptedStorage } from './mockEncryptedStorage';
 import { MockExtensions } from './mockExtensions';
 import { MockFileSystem } from './mockFileSystem';
 import { MockJupyterManager, SupportedCommands } from './mockJupyterManager';
@@ -302,13 +316,6 @@ import {
 } from './testNativeEditorProvider';
 import { TestPersistentStateFactory } from './testPersistentStateFactory';
 import { WebBrowserPanelProvider } from './uiTests/webBrowserPanelProvider';
-import { JupyterServerUriStorage } from '../../client/datascience/jupyter/serverUriStorage';
-import { AuthenticationService } from '../../client/common/application/authenticationService';
-import { MockEncryptedStorage } from './mockEncryptedStorage';
-import { WebviewIPyWidgetCoordinator } from '../../client/datascience/ipywidgets/webviewIPyWidgetCoordinator';
-import { WebviewViewProvider } from '../../client/common/application/webviewViews/webviewViewProvider';
-import { SystemPseudoRandomNumberGenerator } from '../../client/datascience/interactive-ipynb/randomBytes';
-import { KernelEnvironmentVariablesService } from '../../client/datascience/kernel-launcher/kernelEnvVarsService';
 
 export class DataScienceIocContainer extends UnitTestIocContainer {
     public get workingInterpreter() {
@@ -509,6 +516,11 @@ export class DataScienceIocContainer extends UnitTestIocContainer {
         this.serviceManager.addSingleton<IPlotViewerProvider>(IPlotViewerProvider, PlotViewerProvider);
         this.serviceManager.add<IDataViewer>(IDataViewer, DataViewer);
         this.serviceManager.add<IPlotViewer>(IPlotViewer, PlotViewer);
+        this.serviceManager.addSingleton<JupyterServerConnectionService>(
+            IJupyterServerConnectionService,
+            JupyterServerConnectionService
+        );
+        this.serviceManager.addBinding(IJupyterServerConnectionService, IExtensionSingleActivationService);
 
         const experimentService = mock(ExperimentService);
         this.serviceManager.addSingletonInstance<IExperimentService>(IExperimentService, instance(experimentService));
@@ -536,11 +548,20 @@ export class DataScienceIocContainer extends UnitTestIocContainer {
             }
             return Promise.resolve(setState);
         });
-
+        const clipboard = mock<IClipboard>();
+        {
+            let clipboardText = '';
+            when(clipboard.writeText(anything())).thenCall((value: string) => (clipboardText = value));
+            when(clipboard.readText()).thenResolve(clipboardText);
+            this.serviceManager.addSingletonInstance<IClipboard>(IClipboard, instance(clipboard));
+        }
         this.serviceManager.addSingleton<IApplicationEnvironment>(IApplicationEnvironment, ApplicationEnvironment);
         this.serviceManager.addSingleton<IAuthenticationService>(IAuthenticationService, AuthenticationService);
         this.serviceManager.add<INotebookImporter>(INotebookImporter, JupyterImporter);
         this.serviceManager.add<INotebookExporter>(INotebookExporter, JupyterExporter);
+        this.serviceManager.addSingleton<RemoteFileSystemFactory>(RemoteFileSystemFactory, RemoteFileSystemFactory);
+        this.serviceManager.addSingleton<NotebookCreator>(NotebookCreator, NotebookCreator);
+        this.serviceManager.addSingleton<RemoteFileSchemeManager>(RemoteFileSchemeManager, RemoteFileSchemeManager);
         this.serviceManager.addSingleton<ILiveShareApi>(ILiveShareApi, MockLiveShareApi);
         this.serviceManager.addSingleton<IExtensions>(IExtensions, MockExtensions);
         this.serviceManager.add<INotebookServer>(INotebookServer, JupyterServerWrapper);
@@ -638,6 +659,7 @@ export class DataScienceIocContainer extends UnitTestIocContainer {
             instance(mockServerSelector)
         );
 
+        this.serviceManager.addSingleton<JupyterServerPicker>(JupyterServerPicker, JupyterServerPicker);
         this.serviceManager.addSingleton<INotebookProvider>(INotebookProvider, NotebookProvider);
         this.serviceManager.addSingleton<IJupyterNotebookProvider>(IJupyterNotebookProvider, JupyterNotebookProvider);
         this.serviceManager.addSingleton<IJupyterServerProvider>(IJupyterServerProvider, NotebookServerProvider);

@@ -4,7 +4,7 @@ import { MigrateDataScienceSettingsService } from '../../client/activation/migra
 import { ApplicationEnvironment } from '../../client/common/application/applicationEnvironment';
 import { IApplicationEnvironment, IWorkspaceService } from '../../client/common/application/types';
 import { WorkspaceService } from '../../client/common/application/workspace';
-import { PersistentStateFactory, PersistentState } from '../../client/common/persistentState';
+import { PersistentState, PersistentStateFactory } from '../../client/common/persistentState';
 import { IPersistentStateFactory } from '../../client/common/types';
 import { JupyterServerUriStorage } from '../../client/datascience/jupyter/serverUriStorage';
 import { IJupyterServerUriStorage } from '../../client/datascience/types';
@@ -17,8 +17,8 @@ suite('Migrate data science settings', () => {
     let updateDataScienceSettingsService: MigrateDataScienceSettingsService;
     let uriStorage: IJupyterServerUriStorage;
     let persistentStateFactory: IPersistentStateFactory;
-    let uriSet: string | undefined = undefined;
     const SETTINGS_FILEPATH = '/path/to/settings.json';
+    let uriSet: string | undefined;
     const originalSettings = `{
     "python.dataScience.allowImportFromNotebook": true,
     "jupyter.allowImportFromNotebook": true,

@@ -4,7 +4,6 @@
 import { assert } from 'chai';
 import * as TypeMoq from 'typemoq';
 import { WorkspaceConfiguration } from 'vscode';
-
 import { Extensions } from '../../client/common/application/extensions';
 import { IWorkspaceService } from '../../client/common/application/types';
 import { FileSystem } from '../../client/common/platform/fileSystem';
@@ -23,7 +22,12 @@ suite('Theme colors', () => {
     let cssGenerator: CodeCssGenerator;
     let configService: TypeMoq.IMock<IConfigurationService>;
     const settings: MockJupyterSettings = new MockJupyterSettings(undefined);
-
+    suiteSetup(function () {
+        if (process.env.VSC_JUPYTER_CI_TEST_VSC_CHANNEL === 'insiders') {
+            // tslint:disable-next-line: no-invalid-this
+            return this.skip();
+        }
+    });
     setup(() => {
         extensions = new Extensions();
         const fs = new FileSystem();

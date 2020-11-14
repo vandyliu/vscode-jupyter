@@ -956,6 +956,18 @@ export namespace DataScience {
         'DataScience.invalidCustomEditor',
         'Using the Jupyter notebook editor requires the stable version of VS code and the CustomEditor experiment to be enabled.'
     );
+    export const quickPickPlaceHolderLabelForSelectionOfNotebookCreationServer = localize(
+        'DataScience.quickPickPlaceHolderLabelForSelectionOfNotebookCreationServer',
+        'Select a Jupyter Server to create a blank Jupyter Notebook'
+    );
+    export const titleFormatToSelectFolderForCreationOfNotebookOnRemote = localize(
+        'DataScience.titleFormatToSelectFolderForCreationOfNotebookOnRemote',
+        'Select folder on Jupyter Server ({0})'
+    );
+    export const labelToSelectFolderForCreationOfNotebookOnRemote = localize(
+        'DataScience.labelToSelectFolderForCreationOfNotebookOnRemote',
+        'Folder to create notebook'
+    );
 }
 
 // Skip using vscode-nls and instead just compute our strings based on key values. Key values

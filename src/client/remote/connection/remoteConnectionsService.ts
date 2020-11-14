@@ -11,6 +11,7 @@ import { IApplicationShell, IWorkspaceService } from '../../common/application/t
 import { Experiments } from '../../common/experiments/groups';
 import { traceInfo } from '../../common/logger';
 import {
+    IAsyncDisposableRegistry,
     IConfigurationService,
     IDisposableRegistry,
     IExperimentService,
@@ -19,6 +20,7 @@ import {
     IPersistentStateFactory
 } from '../../common/types';
 import { Common, DataScience } from '../../common/utils/localize';
+import { noop } from '../../common/utils/misc';
 import { Identifiers, JUPYTER_OUTPUT_CHANNEL } from '../../datascience/constants';
 import { createAuthorizingRequest } from '../../datascience/jupyter/jupyterRequest';
 import { JupyterSessionManager } from '../../datascience/jupyter/jupyterSessionManager';
@@ -39,12 +41,13 @@ import { RemoteFileSchemeManager } from './fileSchemeManager';
 // tslint:disable: unified-signatures
 
 // Key for our insecure connection global state
-const GlobalStateUserAllowsInsecureConnections = 'DataScienceAllowInsecureConnections';
+export const GlobalStateUserAllowsInsecureConnections = 'DataScienceAllowInsecureConnections';
 
 type ConnectionInfo = {
     settings: ServerConnection.ISettings;
     connection: IJupyterConnection;
     fileScheme: string;
+    serviceManager?: JupyterSessionManager;
 };
 
 const remoteConnections = new Map<string, ConnectionInfo>();
@@ -79,6 +82,7 @@ export class JupyterServerConnectionService
     private _isRemoteExperimentEnabled?: boolean;
     constructor(
         @inject(IDisposableRegistry) private readonly disposables: IDisposableRegistry,
+        @inject(IAsyncDisposableRegistry) private readonly asyncDisposables: IAsyncDisposableRegistry,
         @inject(IConfigurationService) private readonly configuration: IConfigurationService,
         @inject(IJupyterUriProviderRegistration)
         private readonly jupyterPickerRegistration: IJupyterUriProviderRegistration,
@@ -106,6 +110,30 @@ export class JupyterServerConnectionService
                 fileScheme: remoteConnections.get(id)!.fileScheme
             };
         });
+    }
+    public async selectConnection(): Promise<JupyterServerConnection | undefined> {
+        const connections = await this.getConnections();
+        if (connections.length === 0) {
+            return;
+        }
+        if (connections.length === 1) {
+            return connections[0];
+        }
+        const list = connections.map((item) => {
+            return {
+                label: item.displayName,
+                item
+            };
+        });
+
+        const selection = await this.appShell.showQuickPick(list, {
+            canPickMany: false,
+            ignoreFocusOut: true,
+            matchOnDescription: true,
+            matchOnDetail: true,
+            placeHolder: DataScience.quickPickPlaceHolderLabelForSelectionOfNotebookCreationServer()
+        });
+        return selection?.item;
     }
     public get isRemoteExperimentEnabled() {
         if (typeof this._isRemoteExperimentEnabled !== 'boolean') {
@@ -150,15 +178,31 @@ export class JupyterServerConnectionService
         remoteConnections.clear();
         this.clearTimeouts();
     }
-    public async addServer(baseUrl?: string): Promise<void> {
-        if (!baseUrl) {
+    public async addServer(baseUrl?: Uri): Promise<void> {
+        // Check if we have already added this.
+        const connections = await this.getConnections();
+        let url = baseUrl ? decodeURIComponent(baseUrl.toString()) : undefined;
+        if (
+            url &&
+            connections.some((item) => {
+                const conn = this.findConnection(item.id);
+                if (!conn) {
+                    return false;
+                }
+                return conn.connection.baseUrl.toLowerCase().startsWith(url!.toLowerCase());
+            })
+        ) {
+            return;
+        }
+
+        if (!url) {
             const selection = await this.serverPicker.selectJupyterURI(false);
             if (selection?.selection !== 'remote') {
                 return;
             }
-            baseUrl = selection.uri;
+            url = selection.uri;
         }
-        const options = await this.generateNotebookServerOptions(baseUrl);
+        const options = await this.generateNotebookServerOptions(url);
         const connection = await this.getRemoteConnectionInfo(options);
         const [settings, fileScheme] = await Promise.all([
             this.getServerConnectSettings(connection),
@@ -167,10 +211,13 @@ export class JupyterServerConnectionService
         this.trackServer(connection, settings, fileScheme);
         this._onDidAddServer.fire({ id: connection.id, displayName: connection.displayName, fileScheme });
     }
-    public async logout(id: string): Promise<void> {
+    public disconnect(id: string): void {
         const info = remoteConnections.get(id);
         remoteConnections.delete(id);
         if (info) {
+            if (info.serviceManager) {
+                info.serviceManager.dispose().catch(noop);
+            }
             this._onDidRemoveServer.fire({
                 id: info.connection.id,
                 displayName: info.connection.displayName,
@@ -180,13 +227,23 @@ export class JupyterServerConnectionService
             this._onDidRemoveServer.fire(undefined);
         }
     }
-    public async createConnectionManager(id: string | IJupyterConnection): Promise<JupyterSessionManager> {
+    public async getServiceManager(id: string | IJupyterConnection): Promise<JupyterSessionManager> {
         const connectionId = typeof id === 'string' ? id : id.id;
         if (!remoteConnections.has(connectionId)) {
             throw new Error('Remote Server Not found');
         }
-        const { connection, settings } = remoteConnections.get(connectionId)!;
-        return new JupyterSessionManager(connection, settings, this.jupyterOutput, this.configuration);
+        const { connection, settings, serviceManager } = remoteConnections.get(connectionId)!;
+        if (serviceManager) {
+            return serviceManager;
+        }
+        const newServiceManager = new JupyterSessionManager(
+            connection,
+            settings,
+            this.jupyterOutput,
+            this.configuration
+        );
+        this.asyncDisposables.push(newServiceManager);
+        return (remoteConnections.get(connectionId)!.serviceManager = newServiceManager);
     }
 
     public async getRemoteConnectionInfo(options: INotebookServerOptions): Promise<IJupyterConnection> {
