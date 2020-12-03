@@ -11,6 +11,9 @@ import { IMonacoModelContentChangeEvent } from '../react-common/monacoHelpers';
 import { InputHistory } from './inputHistory';
 import { CursorPos, IFont } from './mainState';
 
+// tslint:disable-next-line:no-require-imports no-var-requires
+const throttle = require('lodash/throttle') as typeof import('lodash/throttle');
+
 const stickiness = monacoEditor.editor.TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges;
 
 // we need a separate decoration for glyph margin, since we do not want it on each line of a multi line statement.
@@ -59,6 +62,7 @@ export class Editor extends React.Component<IEditorProps> {
     private modelRef: monacoEditor.editor.ITextModel | null = null;
     private editorRef: monacoEditor.editor.IStandaloneCodeEditor | null = null;
     private decorationIds: string[] = [];
+    private throttledCut = throttle(this.throttledCutImpl.bind(this), 10);
 
     constructor(prop: IEditorProps) {
         super(prop);
@@ -237,6 +241,17 @@ export class Editor extends React.Component<IEditorProps> {
                     this.lastCleanVersionId = this.monacoRef.current.getVersionId();
                     e.stopPropagation();
                 }
+            } else if (cursor && ((e.code === 'Delete' && e.shiftKey) || (e.code === 'x' && e.ctrlKey))) {
+                // Swallow this as it's causing problems. This is a big sucky hack
+                e.stopPropagation();
+                e.preventDefault();
+
+                // Log this to see if we're getting a double
+                // tslint:disable-next-line: no-console
+                console.log('Override CUT');
+
+                // Temporary hack to see what happens
+                this.throttledCut();
             } else if (this.props.keyDown) {
                 // Forward up the chain
                 this.props.keyDown({
@@ -260,6 +275,10 @@ export class Editor extends React.Component<IEditorProps> {
             }
         }
     };
+
+    private throttledCutImpl() {
+        (this.editorRef as any)._modelData.cursor._cut();
+    }
 
     private onKeyUp = (e: monacoEditor.IKeyboardEvent) => {
         if (e.shiftKey && e.keyCode === monacoEditor.KeyCode.Enter) {
