@@ -99,6 +99,7 @@
     "jupyter.command.jupyter.addcellbelow.title": "Add Empty Cell to File",
     "jupyter.command.jupyter.scrolltocell.title": "Scroll Cell Into View",
     "jupyter.command.jupyter.createnewnotebook.title": "Create New Blank Jupyter Notebook",
+    "jupyter.command.jupyter.createnotebookfromtemplate.title": "Create Jupyter Notebook from Template",
     "jupyter.command.jupyter.selectJupyterInterpreter.title": "Select Interpreter to start Jupyter server",
     "jupyter.command.jupyter.createGitHubIssue.title": "Create GitHub Issue",
     "jupyter.command.jupyter.submitGitHubIssue.title": "Submit GitHub Issue",
@@ -291,6 +292,13 @@
     "DataScience.jupyterCommandLineQuickPickPlaceholder": "Choose an option",
     "DataScience.jupyterCommandLineQuickPickTitle": "Pick command line for Jupyter",
     "DataScience.jupyterCommandLinePrompt": "Enter your custom command line for Jupyter",
+    "DataScience.createTemplatePlaceholder": "Choose an option",
+    "DataScience.createTemplateTitle": "Pick a template for your notebook",
+    "DataScience.createTemplateNew": "Create new template from existing notebook",
+    "DataScience.createTemplateDelete": "Delete a custom template",
+    "DataScience.createTemplateNewOpenTitle": "Pick notebook for template",
+    "DataScience.createTemplateNewNameTitle": "Pick name for template",
+    "DataScience.deleteTemplateTitle": "Pick a template to delete",
     "Common.loadingExtension": "Jupyter extension loading...",
     "Common.openOutputPanel": "Show output",
     "DataScience.variableExplorerNameColumn": "Name",
@@ -477,7 +485,7 @@
     "DataScience.interactiveWindowModeBannerSwitchNo": "No",
     "DataScience.ipykernelNotInstalled": "IPyKernel not installed into interpreter {0}",
     "DataScience.illegalEditorConfig": "CustomEditor and NativeNotebook experiments cannot be turned on together",
-    "DataScience.pythonExtensionRequired" : "The Python extension is required to perform that task. Click Yes to open Python extension installation page.",
-    "DataScience.pythonExtensionInstalled" : "Python extension is now installed. Some features might not be available until a notebook or interactive window session is restarted.",
-    "DataScience.invalidCustomEditor" : "Using the Jupyter notebook editor requires the stable version of VS code and the CustomEditor experiment to be enabled."
+    "DataScience.pythonExtensionRequired": "The Python extension is required to perform that task. Click Yes to open Python extension installation page.",
+    "DataScience.pythonExtensionInstalled": "Python extension is now installed. Some features might not be available until a notebook or interactive window session is restarted.",
+    "DataScience.invalidCustomEditor": "Using the Jupyter notebook editor requires the stable version of VS code and the CustomEditor experiment to be enabled."
 }

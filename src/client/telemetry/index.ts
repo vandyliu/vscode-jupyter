@@ -1027,4 +1027,8 @@ export interface IEventNamePropertyMapping {
     // Sync events
     [Telemetry.SyncAllCells]: never | undefined;
     [Telemetry.SyncSingleCell]: never | undefined;
+
+    // Template events
+    [Telemetry.NotebookTemplateExisting]: never | undefined;
+    [Telemetry.NotebookTemplateNew]: never | undefined;
 }

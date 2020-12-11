@@ -56,6 +56,7 @@ interface ICommandNameWithoutArgumentTypeMapping {
     [DSCommands.ExportOutputAsNotebook]: [];
     [DSCommands.AddCellBelow]: [];
     [DSCommands.CreateNewNotebook]: [];
+    [DSCommands.CreateNotebookFromTemplate]: [];
     [DSCommands.EnableDebugLogging]: [];
     [DSCommands.ResetLoggingLevel]: [];
 }

@@ -109,6 +109,7 @@ export namespace Commands {
     export const GotoPrevCellInFile = 'jupyter.gotoPrevCellInFile';
     export const ScrollToCell = 'jupyter.scrolltocell';
     export const CreateNewNotebook = 'jupyter.createnewnotebook';
+    export const CreateNotebookFromTemplate = 'jupyter.createnotebookfromtemplate';
     export const ViewJupyterOutput = 'jupyter.viewOutput';
     export const ExportAsPythonScript = 'jupyter.exportAsPythonScript';
     export const ExportToHTML = 'jupyter.exportToHTML';
@@ -412,7 +413,9 @@ export enum Telemetry {
     NotebookTrustPromptShown = 'DATASCIENCE.NOTEBOOK_TRUST_PROMPT_SHOWN',
     SyncAllCells = 'DS_INTERNAL.SYNC_ALL_CELLS',
     SyncSingleCell = 'DS_INTERNAL.SYNC_SINGLE_CELL',
-    NativeRandomBytesGenerationFailed = 'DS_INTERNAL.NATIVE_RANDOM_BYTES_GENERATION_FAILED'
+    NativeRandomBytesGenerationFailed = 'DS_INTERNAL.NATIVE_RANDOM_BYTES_GENERATION_FAILED',
+    NotebookTemplateExisting = 'DATASCIENCE.NOTEBOOK_TEMPLATE_EXISTING',
+    NotebookTemplateNew = 'DATASCIENCE.NOTEBOOK_TEMPLATE_NEW'
 }
 
 export enum NativeKeyboardCommandTelemetry {
@@ -618,3 +621,4 @@ export namespace LiveShareCommands {
 export const VSCodeNotebookProvider = 'VSCodeNotebookProvider';
 export const OurNotebookProvider = 'OurNotebookProvider';
 export const DataScienceStartupTime = Symbol('DataScienceStartupTime');
+export const TemplatesFolder = 'notebookTemplates';

@@ -964,6 +964,23 @@ export namespace DataScience {
         'DataScience.invalidCustomEditor',
         'Using the Jupyter notebook editor requires the stable version of VS code and the CustomEditor experiment to be enabled.'
     );
+
+    export const createTemplatePlaceholder = localize('DataScience.createTemplatePlaceholder', 'Choose an option');
+    export const createTemplateTitle = localize('DataScience.createTemplateTitle', 'Pick a template for your notebook');
+    export const createTemplateNew = localize(
+        'DataScience.createTemplateNew',
+        'Create new template from existing notebook'
+    );
+    export const createTemplateDelete = localize('DataScience.createTemplateDelete', 'Delete a custom template');
+    export const deleteTemplateTitle = localize('DataScience.createTemplateDelete', 'Pick a template to delete');
+    export const createTemplateNewOpenTitle = localize(
+        'DataScience.createTemplateNewOpenTitle',
+        'Pick notebook for template'
+    );
+    export const createTemplateNewNameTitle = localize(
+        'DataScience.createTemplateNewNameTitle',
+        'Pick name for template'
+    );
 }
 
 // Skip using vscode-nls and instead just compute our strings based on key values. Key values

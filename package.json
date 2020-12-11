@@ -54,6 +54,7 @@
         "onCommand:jupyter.switchToDailyChannel",
         "onCommand:jupyter.switchToWeeklyChannel",
         "onCommand:jupyter.createnewnotebook",
+        "onCommand:jupyter.createnotebookfromtemplate",
         "onCommand:jupyter.createnewinteractive",
         "onCommand:jupyter.importnotebook",
         "onCommand:jupyter.importnotebookfile",
@@ -631,6 +632,11 @@
                 "category": "Jupyter"
             },
             {
+                "command": "jupyter.createnotebookfromtemplate",
+                "title": "%jupyter.command.jupyter.createnotebookfromtemplate.title%",
+                "category": "Jupyter"
+            },
+            {
                 "command": "jupyter.scrolltocell",
                 "title": "%jupyter.command.jupyter.scrolltocell.title%",
                 "category": "Jupyter"
@@ -1153,6 +1159,11 @@
                 {
                     "command": "jupyter.createnewnotebook",
                     "title": "%jupyter.command.jupyter.createnewnotebook.title%",
+                    "category": "Jupyter"
+                },
+                {
+                    "command": "jupyter.createnotebookfromtemplate",
+                    "title": "%jupyter.command.jupyter.createnotebookfromtemplate.title%",
                     "category": "Jupyter"
                 },
                 {

@@ -4,20 +4,34 @@
 'use strict';
 
 import { inject, injectable, multiInject, named, optional } from 'inversify';
-import { CodeLens, ConfigurationTarget, env, Range, Uri } from 'vscode';
+import { CodeLens, ConfigurationTarget, env, QuickPickItem, Range, Uri } from 'vscode';
 import { DebugProtocol } from 'vscode-debugprotocol';
 import { ICommandNameArgumentTypeMapping } from '../../common/application/commands';
-import { IApplicationShell, ICommandManager, IDebugService, IDocumentManager } from '../../common/application/types';
+import {
+    IApplicationEnvironment,
+    IApplicationShell,
+    ICommandManager,
+    IDebugService,
+    IDocumentManager
+} from '../../common/application/types';
 import { traceError } from '../../common/logger';
 import { IFileSystem } from '../../common/platform/types';
 
+import * as path from 'path';
 import { IConfigurationService, IDisposable, IOutputChannel } from '../../common/types';
 import { DataScience } from '../../common/utils/localize';
 import { noop } from '../../common/utils/misc';
+import {
+    IMultiStepInput,
+    IMultiStepInputFactory,
+    InputStep,
+    IQuickPickParameters
+} from '../../common/utils/multiStepInput';
+import { EXTENSION_ROOT_DIR } from '../../constants';
 import { LogLevel } from '../../logging/levels';
 import { captureTelemetry, sendTelemetryEvent } from '../../telemetry';
 import { EventName } from '../../telemetry/constants';
-import { Commands, JUPYTER_OUTPUT_CHANNEL, Telemetry } from '../constants';
+import { Commands, JUPYTER_OUTPUT_CHANNEL, Telemetry, TemplatesFolder } from '../constants';
 import { IDataViewerFactory } from '../data-viewing/types';
 import { DataViewerChecker } from '../interactive-common/dataViewerChecker';
 import { IShowDataViewerFromVariablePanel } from '../interactive-common/interactiveWindowTypes';
@@ -34,6 +48,12 @@ import { JupyterCommandLineSelectorCommand } from './commandLineSelector';
 import { ExportCommands } from './exportCommands';
 import { NotebookCommands } from './notebookCommands';
 import { JupyterServerSelectorCommand } from './serverSelector';
+
+interface ISelectTemplateQuickPickItem extends QuickPickItem {
+    newChoice: boolean;
+    delete?: boolean;
+    filePath?: Uri;
+}
 
 @injectable()
 export class CommandRegistry implements IDisposable {
@@ -60,7 +80,9 @@ export class CommandRegistry implements IDisposable {
         @inject(IJupyterVariableDataProviderFactory)
         private readonly jupyterVariableDataProviderFactory: IJupyterVariableDataProviderFactory,
         @inject(IDataViewerFactory) private readonly dataViewerFactory: IDataViewerFactory,
-        @inject(IJupyterServerUriStorage) private readonly serverUriStorage: IJupyterServerUriStorage
+        @inject(IJupyterServerUriStorage) private readonly serverUriStorage: IJupyterServerUriStorage,
+        @inject(IMultiStepInputFactory) private readonly multiStepFactory: IMultiStepInputFactory,
+        @inject(IApplicationEnvironment) private readonly appEnv: IApplicationEnvironment
     ) {
         this.disposables.push(this.serverSelectedCommand);
         this.disposables.push(this.notebookCommands);
@@ -106,6 +128,7 @@ export class CommandRegistry implements IDisposable {
         this.registerCommand(Commands.DebugStop, this.debugStop);
         this.registerCommand(Commands.DebugCurrentCellPalette, this.debugCurrentCellFromCursor);
         this.registerCommand(Commands.CreateNewNotebook, this.createNewNotebook);
+        this.registerCommand(Commands.CreateNotebookFromTemplate, this.createNotebookFromTemplate);
         this.registerCommand(Commands.ViewJupyterOutput, this.viewJupyterOutput);
         this.registerCommand(Commands.LatestExtension, this.openPythonExtensionPage);
         this.registerCommand(Commands.EnableDebugLogging, this.enableDebugLogging);
@@ -450,6 +473,147 @@ export class CommandRegistry implements IDisposable {
 
     private async createNewNotebook(): Promise<void> {
         await this.notebookEditorProvider.createNew();
+    }
+
+    private createNotebookFromTemplate(): Promise<void> {
+        const multiStep = this.multiStepFactory.create<{}>();
+        return multiStep.run(this.startCreatingNotebookFromTemplate.bind(this), {});
+    }
+
+    private async startCreatingNotebookFromTemplate(
+        input: IMultiStepInput<{}>,
+        state: {}
+    ): Promise<InputStep<{}> | void> {
+        // First step, show a quick pick to choose a template or create a new one
+        const item = await input.showQuickPick<
+            ISelectTemplateQuickPickItem,
+            IQuickPickParameters<ISelectTemplateQuickPickItem>
+        >({
+            placeholder: DataScience.createTemplatePlaceholder(),
+            items: await this.getTemplatePickList(false),
+            title: DataScience.createTemplateTitle()
+        });
+        if (item.newChoice) {
+            return this.askForNewTemplateFile(input, state);
+        } else if (item.delete) {
+            return this.deleteTemplateFile(input, state);
+        } else if (item.filePath) {
+            await this.createNewNotebookFrom(item.filePath);
+        }
+    }
+
+    private async createNewNotebookFrom(file: Uri): Promise<void> {
+        const contents = await this.fs.readFile(file);
+        await this.notebookEditorProvider.createNew(contents);
+    }
+
+    private async askForNewTemplateFile(input: IMultiStepInput<{}>, state: {}): Promise<InputStep<{}> | void> {
+        const filtersKey = DataScience.importDialogFilter();
+        const filtersObject: { [name: string]: string[] } = {};
+        filtersObject[filtersKey] = ['ipynb'];
+
+        const uris = await this.appShell.showOpenDialog({
+            openLabel: DataScience.createTemplateNewOpenTitle(),
+            filters: filtersObject
+        });
+
+        if (uris && uris.length) {
+            // Ask for a name
+            return this.createNewTemplate(uris, input, state);
+        }
+    }
+
+    private async deleteTemplateFile(input: IMultiStepInput<{}>, _state: {}): Promise<InputStep<{}> | void> {
+        const item = await input.showQuickPick<
+            ISelectTemplateQuickPickItem,
+            IQuickPickParameters<ISelectTemplateQuickPickItem>
+        >({
+            placeholder: DataScience.createTemplatePlaceholder(),
+            items: await this.getTemplatePickList(true),
+            title: DataScience.deleteTemplateTitle()
+        });
+        if (item && item.filePath) {
+            await this.fs.delete(item.filePath);
+        }
+    }
+    private async createNewTemplate(
+        uris: Uri[],
+        input: IMultiStepInput<{}>,
+        _state: {}
+    ): Promise<InputStep<{}> | void> {
+        const name = await input.showInputBox({
+            title: DataScience.createTemplateNewNameTitle(),
+            value: '',
+            prompt: '',
+            validate: (_s) => Promise.resolve(undefined)
+        });
+
+        // If  we have a name and an array of files, create the template
+        if (name && uris.length) {
+            const contents = await this.fs.readFile(uris[0]);
+            if (this.appEnv.userSettingsFile) {
+                const dir = path.join(path.dirname(this.appEnv.userSettingsFile), TemplatesFolder);
+                const filePath = path.join(dir, name);
+                await this.fs.createDirectory(Uri.file(dir));
+                await this.fs.writeFile(Uri.file(filePath), contents);
+            }
+            await this.notebookEditorProvider.createNew(contents);
+        }
+    }
+
+    private async getTemplatePickList(justCustom: boolean): Promise<ISelectTemplateQuickPickItem[]> {
+        const items: ISelectTemplateQuickPickItem[] = [];
+        let haveCustom = false;
+
+        // Might have a default set in the extension/template folder
+        const extensionTemplates = path.join(EXTENSION_ROOT_DIR, TemplatesFolder);
+        if (!justCustom && (await this.fs.localDirectoryExists(extensionTemplates))) {
+            const files = await this.fs.getFiles(Uri.file(extensionTemplates));
+            files.forEach((f) => {
+                // Files returned are just the base names.
+                items.push({
+                    label: `$(notebook-kernel-select) ${path.basename(f.fsPath)}`,
+                    filePath: Uri.file(path.join(extensionTemplates, f.fsPath)),
+                    newChoice: false
+                });
+            });
+        }
+
+        // Look in the user settings for templates
+        const settingsFile = this.appEnv.userSettingsFile;
+        if (settingsFile) {
+            try {
+                const dir = path.join(path.dirname(settingsFile), TemplatesFolder);
+                const settingsTemplates = await this.fs.getFiles(Uri.file(dir));
+                settingsTemplates.forEach((f) => {
+                    haveCustom = true;
+                    // Files returned are just the base names.
+                    items.push({
+                        label: `$(accounts-view-bar-icon) ${path.basename(f.fsPath)}`,
+                        filePath: Uri.file(path.join(dir, f.fsPath)).with({ scheme: f.scheme }),
+                        newChoice: false
+                    });
+                });
+            } catch {
+                // This might fail if the templates folder isn't availabe. VS code doesn't seem
+                // to have a 'directory exists' for a remote file system.
+            }
+        }
+
+        if (!justCustom) {
+            // Then always include a 'Create New Template' entry;
+            items.push({ label: `$(terminal-new) ${DataScience.createTemplateNew()}`, newChoice: true });
+
+            // Also create a delete entry if there are any custom settings
+            if (haveCustom) {
+                items.push({
+                    label: `$(notebook-delete-cell) ${DataScience.createTemplateDelete()}`,
+                    newChoice: false,
+                    delete: true
+                });
+            }
+        }
+        return items;
     }
 
     private viewJupyterOutput() {

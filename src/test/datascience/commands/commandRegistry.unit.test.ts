@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 import { anything, instance, mock, verify } from 'ts-mockito';
+import { ApplicationEnvironment } from '../../../client/common/application/applicationEnvironment';
 import { ApplicationShell } from '../../../client/common/application/applicationShell';
 import { CommandManager } from '../../../client/common/application/commandManager';
 import { DebugService } from '../../../client/common/application/debugService';
@@ -8,6 +9,7 @@ import { DocumentManager } from '../../../client/common/application/documentMana
 import { ICommandManager } from '../../../client/common/application/types';
 import { ConfigurationService } from '../../../client/common/configuration/service';
 import { FileSystem } from '../../../client/common/platform/fileSystem';
+import { MultiStepInputFactory } from '../../../client/common/utils/multiStepInput';
 import { JupyterCommandLineSelectorCommand } from '../../../client/datascience/commands/commandLineSelector';
 import { CommandRegistry } from '../../../client/datascience/commands/commandRegistry';
 import { ExportCommands } from '../../../client/datascience/commands/exportCommands';
@@ -45,6 +47,8 @@ suite('DataScience - Commands', () => {
         const dataViewerFactory = mock(DataViewerFactory);
         const fileSystem = mock(FileSystem);
         const serverUriStorage = mock(JupyterServerUriStorage);
+        const appEnv = mock(ApplicationEnvironment);
+        const multistep = mock(MultiStepInputFactory);
 
         commandRegistry = new CommandRegistry(
             documentManager,
@@ -63,7 +67,9 @@ suite('DataScience - Commands', () => {
             instance(fileSystem),
             instance(jupyterVariableDataProviderFactory),
             instance(dataViewerFactory),
-            instance(serverUriStorage)
+            instance(serverUriStorage),
+            instance(multistep),
+            instance(appEnv)
         );
     });
 
