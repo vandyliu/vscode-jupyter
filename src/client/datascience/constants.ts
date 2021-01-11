@@ -49,6 +49,8 @@ export namespace Commands {
     export const RunAllCells = 'jupyter.runallcells';
     export const RunAllCellsAbove = 'jupyter.runallcellsabove';
     export const RunCellAndAllBelow = 'jupyter.runcellandallbelow';
+    export const NativeNotebookRunAllCellsAbove = 'jupyter.notebookeditor.runallcellsabove';
+    export const NativeNotebookRunCellAndAllBelow = 'jupyter.notebookeditor.runcellandallbelow';
     export const SetJupyterKernel = 'jupyter.setKernel';
     export const SwitchJupyterKernel = 'jupyter.switchKernel';
     export const RunAllCellsAbovePalette = 'jupyter.runallcellsabove.palette';
@@ -130,6 +132,7 @@ export namespace Commands {
     export const SubmitGitHubIssue = 'jupyter.submitGitHubIssue';
     export const ShowDataViewer = 'jupyter.showDataViewer';
     export const ClearSavedJupyterUris = 'jupyter.clearSavedJupyterUris';
+    export const OpenVariableView = 'jupyter.openVariableView';
 }
 
 export namespace CodeLensCommands {
@@ -286,7 +289,9 @@ export enum Telemetry {
     ShiftEnterBannerShown = 'DS_INTERNAL.SHIFTENTER_BANNER_SHOWN',
     EnableInteractiveShiftEnter = 'DATASCIENCE.ENABLE_INTERACTIVE_SHIFT_ENTER',
     DisableInteractiveShiftEnter = 'DATASCIENCE.DISABLE_INTERACTIVE_SHIFT_ENTER',
-    ShowDataViewer = 'DATASCIENCE.SHOW_DATA_EXPLORER',
+    StartShowDataViewer = 'DATASCIENCE.START_SHOW_DATA_EXPLORER', // Called by the factory when attempting to load the data viewer
+    ShowDataViewer = 'DATASCIENCE.SHOW_DATA_EXPLORER', // Called by the data viewer itself when it is actually loaded
+    FailedShowDataViewer = 'DATASCIENCE.FAILED_SHOW_DATA_EXPLORER', // Called by the factory when the data viewer fails to load
     RunFileInteractive = 'DATASCIENCE.RUN_FILE_INTERACTIVE',
     DebugFileInteractive = 'DATASCIENCE.DEBUG_FILE_INTERACTIVE',
     PandasNotInstalled = 'DS_INTERNAL.SHOW_DATA_NO_PANDAS',

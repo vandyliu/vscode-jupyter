@@ -33,6 +33,7 @@ interface ICommandNameWithoutArgumentTypeMapping {
     ['editor.action.formatDocument']: [];
     ['editor.action.rename']: [];
     ['jupyter.selectJupyterInterpreter']: [];
+    ['jupyterViewVariables.focus']: [];
     [DSCommands.RunCurrentCell]: [];
     [DSCommands.RunCurrentCellAdvance]: [];
     [DSCommands.ExecSelectionInInteractiveWindow]: [];
@@ -59,6 +60,7 @@ interface ICommandNameWithoutArgumentTypeMapping {
     [DSCommands.CreateNotebookFromTemplate]: [];
     [DSCommands.EnableDebugLogging]: [];
     [DSCommands.ResetLoggingLevel]: [];
+    [DSCommands.OpenVariableView]: [];
 }
 
 /**
@@ -93,6 +95,8 @@ export interface ICommandNameArgumentTypeMapping extends ICommandNameWithoutArgu
     [DSCommands.RunCell]: [Uri, number, number, number, number];
     [DSCommands.RunAllCellsAbove]: [Uri, number, number];
     [DSCommands.RunCellAndAllBelow]: [Uri, number, number];
+    [DSCommands.NativeNotebookRunAllCellsAbove]: [Uri];
+    [DSCommands.NativeNotebookRunCellAndAllBelow]: [Uri];
     [DSCommands.RunAllCellsAbovePalette]: [];
     [DSCommands.RunCellAndAllBelowPalette]: [];
     [DSCommands.DebugCurrentCellPalette]: [];

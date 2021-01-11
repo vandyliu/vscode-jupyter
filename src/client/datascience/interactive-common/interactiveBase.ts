@@ -406,12 +406,12 @@ export abstract class InteractiveBase extends WebviewPanelHost<IInteractiveWindo
 
     @captureTelemetry(Telemetry.Undo)
     public undoCells() {
-        this.postMessage(InteractiveWindowMessages.Undo).ignoreErrors();
+        this.postMessage(InteractiveWindowMessages.UndoCommand).ignoreErrors();
     }
 
     @captureTelemetry(Telemetry.Redo)
     public redoCells() {
-        this.postMessage(InteractiveWindowMessages.Redo).ignoreErrors();
+        this.postMessage(InteractiveWindowMessages.RedoCommand).ignoreErrors();
     }
 
     @captureTelemetry(Telemetry.DeleteAllCells)
@@ -1028,7 +1028,8 @@ export abstract class InteractiveBase extends WebviewPanelHost<IInteractiveWindo
             }
         } catch (e) {
             traceError(e);
-            this.applicationShell.showErrorMessage(e.toString());
+            sendTelemetryEvent(Telemetry.FailedShowDataViewer);
+            this.applicationShell.showErrorMessage(localize.DataScience.showDataViewerFail());
         }
     }
 
@@ -1558,6 +1559,12 @@ export abstract class InteractiveBase extends WebviewPanelHost<IInteractiveWindo
             await this.addSysInfo(SysInfoReason.Connect);
         } else {
             await this.addSysInfo(SysInfoReason.New);
+        }
+        // Reset our file in the kernel.
+        const fileInKernel = this.fileInKernel;
+        this.fileInKernel = undefined;
+        if (fileInKernel) {
+            await this.setFileInKernel(fileInKernel, undefined);
         }
         return this.updateNotebookOptions(kernelConnection);
     }

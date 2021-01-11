@@ -80,6 +80,7 @@ const messageWithMessageTypes: MessageMapping<IInteractiveWindowMapping> & Messa
     [CommonActionType.MOVE_CELL_DOWN]: MessageType.syncAcrossSameNotebooks | MessageType.syncWithLiveShare,
     [CommonActionType.MOVE_CELL_UP]: MessageType.syncAcrossSameNotebooks | MessageType.syncWithLiveShare,
     [CommonActionType.OPEN_SETTINGS]: MessageType.other,
+    [CommonActionType.REDO]: MessageType.syncAcrossSameNotebooks | MessageType.syncWithLiveShare,
     [CommonActionType.RESTART_KERNEL]: MessageType.other,
     [CommonActionType.RUN_BY_LINE]: MessageType.other,
     [CommonActionType.SAVE]: MessageType.other,
@@ -95,6 +96,7 @@ const messageWithMessageTypes: MessageMapping<IInteractiveWindowMapping> & Messa
     [CommonActionType.TOGGLE_OUTPUT]: MessageType.syncWithLiveShare,
     [CommonActionType.TOGGLE_VARIABLE_EXPLORER]: MessageType.syncWithLiveShare,
     [CommonActionType.SET_VARIABLE_EXPLORER_HEIGHT]: MessageType.other,
+    [CommonActionType.UNDO]: MessageType.syncAcrossSameNotebooks | MessageType.syncWithLiveShare,
     [CommonActionType.UNFOCUS_CELL]: MessageType.syncWithLiveShare,
     [CommonActionType.UNMOUNT]: MessageType.other,
     [CommonActionType.PostOutgoingMessage]: MessageType.other,
@@ -104,6 +106,7 @@ const messageWithMessageTypes: MessageMapping<IInteractiveWindowMapping> & Messa
     [CommonActionType.LOAD_IPYWIDGET_CLASS_FAILURE]: MessageType.other,
     [CommonActionType.IPYWIDGET_WIDGET_VERSION_NOT_SUPPORTED]: MessageType.other,
     [CommonActionType.IPYWIDGET_RENDER_FAILURE]: MessageType.other,
+    [CommonActionType.VARIABLE_VIEW_LOADED]: MessageType.other,
 
     // Types from InteractiveWindowMessages
     [InteractiveWindowMessages.Activate]: MessageType.other,
@@ -129,6 +132,7 @@ const messageWithMessageTypes: MessageMapping<IInteractiveWindowMapping> & Messa
     [InteractiveWindowMessages.GetAllCells]: MessageType.other,
     [InteractiveWindowMessages.GetCellCode]: MessageType.other,
     [InteractiveWindowMessages.ForceVariableRefresh]: MessageType.other,
+    [InteractiveWindowMessages.UpdateVariableViewExecutionCount]: MessageType.other,
     [InteractiveWindowMessages.GetVariablesRequest]: MessageType.other,
     [InteractiveWindowMessages.GetVariablesResponse]: MessageType.other,
     [InteractiveWindowMessages.GotoCodeCell]: MessageType.syncWithLiveShare,
@@ -205,6 +209,8 @@ const messageWithMessageTypes: MessageMapping<IInteractiveWindowMapping> & Messa
     [InteractiveWindowMessages.SubmitNewCell]: MessageType.other,
     [InteractiveWindowMessages.Sync]: MessageType.other,
     [InteractiveWindowMessages.Undo]: MessageType.other,
+    [InteractiveWindowMessages.UndoCommand]: MessageType.other,
+    [InteractiveWindowMessages.RedoCommand]: MessageType.other,
     [InteractiveWindowMessages.UnfocusedCellEditor]: MessageType.syncWithLiveShare,
     [InteractiveWindowMessages.UpdateCellWithExecutionResults]:
         MessageType.syncAcrossSameNotebooks | MessageType.syncWithLiveShare,

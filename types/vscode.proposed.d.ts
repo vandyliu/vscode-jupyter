@@ -650,6 +650,13 @@ declare module 'vscode' {
         dispose(): void;
     }
 
+    export interface NotebookDocumentShowOptions {
+        viewColumn?: ViewColumn;
+        preserveFocus?: boolean;
+        preview?: boolean;
+        selection?: NotebookCellRange;
+    }
+
     export namespace notebook {
         export function registerNotebookContentProvider(
             notebookType: string,
@@ -725,6 +732,10 @@ declare module 'vscode' {
         export const onDidChangeActiveNotebookEditor: Event<NotebookEditor | undefined>;
         export const onDidChangeNotebookEditorSelection: Event<NotebookEditorSelectionChangeEvent>;
         export const onDidChangeNotebookEditorVisibleRanges: Event<NotebookEditorVisibleRangesChangeEvent>;
+        export function showNotebookDocument(
+            document: NotebookDocument,
+            options?: NotebookDocumentShowOptions
+        ): Promise<NotebookEditor>;
     }
     /**
      * An [event](#Event) which fires when an [AuthenticationProvider](#AuthenticationProvider) is added or removed.
@@ -851,30 +862,41 @@ declare module 'vscode' {
          * provider
          */
         export function logout(providerId: string, sessionId: string): Thenable<void>;
+    }
 
+    /**
+     * Represents a storage utility for secrets, information that is
+     * sensitive.
+     */
+    export interface SecretStorage {
         /**
-         * Retrieve a password that was stored with key. Returns undefined if there
+         * Retrieve a secret that was stored with key. Returns undefined if there
          * is no password matching that key.
          * @param key The key the password was stored under.
+         * @returns The stored value or `undefined`.
          */
-        export function getPassword(key: string): Thenable<string | undefined>;
+        get(key: string): Thenable<string | undefined>;
 
         /**
-         * Store a password under a given key.
-         * @param key The key to store the password under
-         * @param value The password
+         * Store a secret under a given key.
+         * @param key The key to store the password under.
+         * @param value The password.
          */
-        export function setPassword(key: string, value: string): Thenable<void>;
+        set(key: string, value: string): Thenable<void>;
 
         /**
-         * Remove a password from storage.
+         * Remove a secret from storage.
          * @param key The key the password was stored under.
          */
-        export function deletePassword(key: string): Thenable<void>;
+        delete(key: string): Thenable<void>;
 
         /**
-         * Fires when a password is set or deleted.
+         * Fires when a secret is set or deleted.
          */
-        export const onDidChangePassword: Event<void>;
+        onDidChange: Event<void>;
+    }
+
+    export interface ExtensionContext {
+        secrets: SecretStorage;
     }
 }

@@ -51,6 +51,8 @@ export enum InteractiveWindowMessages {
     DeleteAllCells = 'delete_all_cells',
     Undo = 'undo',
     Redo = 'redo',
+    UndoCommand = 'undo.command', // Only used by the interactive window
+    RedoCommand = 'redo.command',
     ExpandAll = 'expand_all',
     CollapseAll = 'collapse_all',
     StartProgress = 'start_progress',
@@ -75,6 +77,7 @@ export enum InteractiveWindowMessages {
     SetVariableExplorerHeight = 'set_variable_explorer_height',
     VariableExplorerHeightResponse = 'variable_explorer_height_response',
     ForceVariableRefresh = 'force_variable_refresh',
+    UpdateVariableViewExecutionCount = 'update_variable_view_execution_count',
     ProvideCompletionItemsRequest = 'provide_completion_items_request',
     CancelCompletionItemsRequest = 'cancel_completion_items_request',
     ProvideCompletionItemsResponse = 'provide_completion_items_response',
@@ -248,6 +251,7 @@ export interface ISubmitNewCell {
 
 export interface IReExecuteCells {
     cellIds: string[];
+    code: string[];
 }
 
 export interface IProvideCompletionItemsRequest {
@@ -590,6 +594,7 @@ export class IInteractiveWindowMapping {
     public [IPyWidgetMessages.IPyWidgets_mirror_execute]: { id: string; msg: KernelMessage.IExecuteRequestMsg };
     public [InteractiveWindowMessages.StartCell]: ICell;
     public [InteractiveWindowMessages.ForceVariableRefresh]: never | undefined;
+    public [InteractiveWindowMessages.UpdateVariableViewExecutionCount]: { executionCount: number };
     public [InteractiveWindowMessages.FinishCell]: IFinishCell;
     public [InteractiveWindowMessages.UpdateCellWithExecutionResults]: ICell;
     public [InteractiveWindowMessages.GotoCodeCell]: IGotoCode;
@@ -608,8 +613,10 @@ export class IInteractiveWindowMapping {
     public [InteractiveWindowMessages.GetAllCellCode]: IResponse;
     public [InteractiveWindowMessages.ReturnAllCellCode]: IReturnAllCodeResponse;
     public [InteractiveWindowMessages.DeleteAllCells]: IAddCellAction;
-    public [InteractiveWindowMessages.Undo]: never | undefined;
-    public [InteractiveWindowMessages.Redo]: never | undefined;
+    public [InteractiveWindowMessages.Undo]: ICell[];
+    public [InteractiveWindowMessages.Redo]: ICell[];
+    public [InteractiveWindowMessages.UndoCommand]: never | undefined;
+    public [InteractiveWindowMessages.RedoCommand]: never | undefined;
     public [InteractiveWindowMessages.ExpandAll]: never | undefined;
     public [InteractiveWindowMessages.CollapseAll]: never | undefined;
     public [InteractiveWindowMessages.StartProgress]: never | undefined;

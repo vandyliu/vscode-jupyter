@@ -418,6 +418,13 @@ export class NativeEditor extends InteractiveBase implements INotebookEditor {
         throw Error('Not implemented Exception');
     }
 
+    public runAbove(): void {
+        throw Error('Not implemented Exception');
+    }
+    public runCellAndBelow(): void {
+        throw Error('Not implemented Exception');
+    }
+
     protected addSysInfo(reason: SysInfoReason): Promise<void> {
         // We need to send a message when restarting
         if (reason === SysInfoReason.Restart || reason === SysInfoReason.New) {
@@ -494,7 +501,7 @@ export class NativeEditor extends InteractiveBase implements INotebookEditor {
                     continue;
                 }
                 cellsExecuting.add(cell);
-                await this.reexecuteCell(cell, tokenSource.token);
+                await this.reexecuteCell(cell, info.code[i], tokenSource.token);
                 cellsExecuting.delete(cell);
 
                 // Check the new state of our cell
@@ -712,14 +719,11 @@ export class NativeEditor extends InteractiveBase implements INotebookEditor {
         ]);
     }
 
-    private async reexecuteCell(cell: ICell, cancelToken: CancellationToken): Promise<void> {
+    private async reexecuteCell(cell: ICell, code: string, cancelToken: CancellationToken): Promise<void> {
         try {
             // If there's any payload, it has the code and the id
             if (cell.id && cell.data.cell_type !== 'messages') {
                 traceInfo(`Executing cell ${cell.id}`);
-
-                // Make sure our model is up to date
-                await this.syncCell(cell.id);
 
                 // Clear the result if we've run before
                 await this.clearResult(cell.id);
@@ -729,7 +733,6 @@ export class NativeEditor extends InteractiveBase implements INotebookEditor {
                     cell.data.metadata.tags = cell.data.metadata.tags.filter((t) => t !== 'outputPrepend');
                 }
 
-                const code = concatMultilineString(cell.data.source);
                 // Send to ourselves.
                 await this.submitCode(code, Identifiers.EmptyFileName, 0, cell.id, cell.data, undefined, cancelToken);
             }

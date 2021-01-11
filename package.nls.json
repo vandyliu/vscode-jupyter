@@ -108,6 +108,7 @@
     "jupyter.command.jupyter.showDataViewer.title": "View Value in Data Viewer",
     "jupyter.command.jupyter.viewOutput.title": "Show Output",
     "jupyter.command.jupyter.clearSavedJupyterUris.title": "Clear Jupyter server list",
+    "jupyter.command.jupyter.openVariableView.title": "Open Jupyter Variable View",
     "Datascience.currentlySelectedJupyterInterpreterForPlaceholder": "current: {0}",
     "jupyter.command.jupyter.analysis.clearCache.title": "Clear Module Analysis Cache",
     "jupyter.command.jupyter.analysis.restartLanguageServer.title": "Restart Language Server",
@@ -402,6 +403,8 @@
     "DataScience.insertAbove": "Insert cell above",
     "DataScience.addCell": "Add cell",
     "DataScience.runAll": "Run all cells",
+    "DataScience.runAbove": "Run cells above",
+    "DataScience.runBelow": "Run cell and below",
     "DataScience.convertingToPythonFile": "Converting ipynb to python file",
     "DataScience.untitledNotebookMessage": "Your changes will be lost if you don't save them.",
     "DataScience.untitledNotebookYes": "Save",
@@ -485,7 +488,14 @@
     "DataScience.interactiveWindowModeBannerSwitchNo": "No",
     "DataScience.ipykernelNotInstalled": "IPyKernel not installed into interpreter {0}",
     "DataScience.illegalEditorConfig": "CustomEditor and NativeNotebook experiments cannot be turned on together",
+<<<<<<< HEAD
     "DataScience.pythonExtensionRequired": "The Python extension is required to perform that task. Click Yes to open Python extension installation page.",
     "DataScience.pythonExtensionInstalled": "Python extension is now installed. Some features might not be available until a notebook or interactive window session is restarted.",
     "DataScience.invalidCustomEditor": "Using the Jupyter notebook editor requires the stable version of VS code and the CustomEditor experiment to be enabled."
+=======
+    "DataScience.pythonExtensionRequired" : "The Python extension is required to perform that task. Click Yes to open Python extension installation page.",
+    "DataScience.pythonExtensionInstalled" : "Python extension is now installed. Some features might not be available until a notebook or interactive window session is restarted.",
+    "DataScience.invalidCustomEditor" : "Using the Jupyter notebook editor requires the stable version of VS code and the CustomEditor experiment to be enabled.",
+    "DataScience.showDataViewerFail" : "Failed to create the Data Viewer. Check the Jupyter tab of the Output window for more info."
+>>>>>>> origin/main
 }

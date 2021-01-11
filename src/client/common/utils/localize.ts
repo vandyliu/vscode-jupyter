@@ -980,6 +980,9 @@ export namespace DataScience {
     export const createTemplateNewNameTitle = localize(
         'DataScience.createTemplateNewNameTitle',
         'Pick name for template'
+    export const showDataViewerFail = localize(
+        'DataScience.showDataViewerFail',
+        'Failed to create the Data Viewer. Check the Jupyter tab of the Output window for more info.'
     );
 }
 

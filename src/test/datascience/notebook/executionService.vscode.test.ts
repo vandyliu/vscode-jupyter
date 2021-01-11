@@ -82,6 +82,16 @@ suite('DataScience - VSCode Notebook - (Execution) (slow)', () => {
         // Wait till execution count changes and status is success.
         await waitForExecutionCompletedSuccessfully(cell);
     });
+    test('Leading whitespace not suppressed', async () => {
+        await insertCodeCell('print("\tho")\nprint("\tho")\nprint("\tho")\n', { index: 0 });
+        const cell = vscodeNotebook.activeNotebookEditor?.document.cells![0]!;
+
+        await executeCell(cell);
+
+        await waitForExecutionCompletedSuccessfully(cell);
+        const output = (cell.outputs[0] as CellDisplayOutput).data['text/plain'];
+        assert.equal(output, '\tho\n\tho\n\tho\n', 'Cell with leading whitespace has incorrect output');
+    });
     test('Executed events are triggered', async () => {
         await insertCodeCell('print("Hello World")');
         const cell = vscodeNotebook.activeNotebookEditor?.document.cells![0]!;
@@ -620,5 +630,27 @@ suite('DataScience - VSCode Notebook - (Execution) (slow)', () => {
         // Confirm the output
         assert.equal(output1.data['text/plain'], '12');
         assert.equal(output2.data['text/plain'], 'ab');
+    });
+
+    test('Execute all cells and run after error', async () => {
+        await insertCodeCell('raise Error("fail")', { index: 0 });
+        await insertCodeCell('print("after fail")', { index: 1 });
+
+        process.env.VSC_JUPYTER_LOG_KERNEL_OUTPUT = 'true';
+        const cells = vscodeNotebook.activeNotebookEditor!.document.cells;
+        await executeActiveDocument();
+
+        await waitForExecutionCompletedWithErrors(cells[0]);
+
+        // Second cell output should be empty
+        assert.equal(cells[1].outputs.length, 0, 'Second cell is not empty on run all');
+
+        const cell = vscodeNotebook.activeNotebookEditor?.document.cells![1]!;
+        await executeCell(cell);
+
+        // Wait till execution count changes and status is success.
+        await waitForExecutionCompletedSuccessfully(cell);
+
+        assert.equal(cell.outputs.length, 1, 'Second cell is empty after running individually');
     });
 });

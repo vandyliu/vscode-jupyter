@@ -39,7 +39,8 @@
         "Extension Packs",
         "Data Science",
         "Machine Learning",
-        "Notebooks"
+        "Notebooks",
+        "Visualization"
     ],
     "activationEvents": [
         "onLanguage:python",
@@ -65,6 +66,7 @@
         "onCommand:jupyter.exportfileandoutputasnotebook",
         "onCommand:jupyter.selectJupyterInterpreter",
         "onCommand:jupyter.selectjupytercommandline",
+        "onCommand:jupyter.openVariableView",
         "onNotebook:jupyter-notebook",
         "onCustomEditor:jupyter.notebook.ipynb"
     ],
@@ -277,6 +279,26 @@
                 "icon": {
                     "light": "resources/light/export_to_python.svg",
                     "dark": "resources/dark/export_to_python.svg"
+                },
+                "enablement": "notebookViewType == jupyter-notebook && jupyter.isnotebooktrusted"
+            },
+            {
+                "command": "jupyter.notebookeditor.runallcellsabove",
+                "title": "%DataScience.runAbove%",
+                "category": "Jupyter",
+                "icon": {
+                    "light": "resources/light/runabove.svg",
+                    "dark": "resources/dark/runabove-inverse.svg"
+                },
+                "enablement": "notebookViewType == jupyter-notebook && jupyter.isnotebooktrusted"
+            },
+            {
+                "command": "jupyter.notebookeditor.runcellandallbelow",
+                "title": "%DataScience.runBelow%",
+                "category": "Jupyter",
+                "icon": {
+                    "light": "resources/light/runbelow.svg",
+                    "dark": "resources/dark/runbelow-inverse.svg"
                 },
                 "enablement": "notebookViewType == jupyter-notebook && jupyter.isnotebooktrusted"
             },
@@ -683,6 +705,11 @@
                 "command": "jupyter.clearSavedJupyterUris",
                 "title": "%jupyter.command.jupyter.clearSavedJupyterUris.title%",
                 "category": "Jupyter"
+            },
+            {
+                "command": "jupyter.openVariableView",
+                "title": "%jupyter.command.jupyter.openVariableView.title%",
+                "category": "Jupyter"
             }
         ],
         "menus": {
@@ -739,6 +766,18 @@
                 }
             ],
             "editor/title": [
+                {
+                    "command": "jupyter.notebookeditor.runallcellsabove",
+                    "title": "%DataScience.runAbove%",
+                    "group": "navigation",
+                    "when": "resourceLangId == jupyter && notebookViewType == 'jupyter-notebook' && jupyter.isnotebooktrusted && jupyter.havenativecells"
+                },
+                {
+                    "command": "jupyter.notebookeditor.runcellandallbelow",
+                    "title": "%DataScience.runBelow%",
+                    "group": "navigation",
+                    "when": "resourceLangId == jupyter && notebookViewType == 'jupyter-notebook' && jupyter.isnotebooktrusted && jupyter.havenativecells"
+                },
                 {
                     "command": "jupyter.notebookeditor.restartkernel",
                     "title": "%jupyter.command.jupyter.restartkernel.title%",
@@ -1276,6 +1315,7 @@
                         "enum": [
                             "NativeNotebookEditor",
                             "CustomEditor",
+                            "NativeVariableView",
                             "All"
                         ]
                     },
@@ -1716,6 +1756,31 @@
                 "mimeTypes": [
                     "application/vnd.jupyter.widget-view+json"
                 ]
+            },
+            {
+                "id": "jupyter-notebook-renderer",
+                "entrypoint": "./out/client_renderer/renderers.js",
+                "displayName": "Jupyter Notebook Renderer",
+                "mimeTypes": [
+                    "application/geo+json",
+                    "application/vdom.v1+json",
+                    "application/vnd.dataresource+json",
+                    "application/vnd.plotly.v1+json",
+                    "application/vnd.vega.v2+json",
+                    "application/vnd.vega.v3+json",
+                    "application/vnd.vega.v4+json",
+                    "application/vnd.vega.v5+json",
+                    "application/vnd.vegalite.v1+json",
+                    "application/vnd.vegalite.v2+json",
+                    "application/vnd.vegalite.v3+json",
+                    "application/vnd.vegalite.v4+json",
+                    "application/x-nteract-model-debug+json",
+                    "image/gif",
+                    "image/png",
+                    "image/jpeg",
+                    "text/latex",
+                    "text/vnd.plotly.v1+html"
+                ]
             }
         ],
         "customEditors": [
@@ -1731,16 +1796,16 @@
             }
         ],
         "viewsContainers": {
-            "activitybar": [
+            "panel": [
                 {
-                    "id": "jupyter",
+                    "id": "jupyter-variables",
                     "title": "Jupyter",
                     "icon": "NOICON.svg"
                 }
             ]
         },
         "views": {
-            "jupyter": [
+            "jupyter-variables": [
                 {
                     "type": "webview",
                     "id": "jupyterViewVariables",
@@ -1834,7 +1899,7 @@
         "node-stream-zip": "^1.6.0",
         "onigasm": "^2.2.2",
         "pdfkit": "^0.11.0",
-        "plotly.js-dist": "^1.58.2",
+        "plotly.js-dist": "^1.58.4",
         "portfinder": "^1.0.25",
         "react": "^16.5.2",
         "react-data-grid": "^6.0.2-0",
@@ -1873,7 +1938,7 @@
         "vscode-languageclient": "7.0.0-next.9",
         "vscode-languageserver": "7.0.0-next.7",
         "vscode-languageserver-protocol": "3.16.0-next.7",
-        "vscode-tas-client": "^0.1.4",
+        "vscode-tas-client": "^0.1.17",
         "vsls": "^0.3.1291",
         "winston": "^3.2.1",
         "ws": "^6.0.0",

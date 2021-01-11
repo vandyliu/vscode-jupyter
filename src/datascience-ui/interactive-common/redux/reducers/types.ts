@@ -66,6 +66,7 @@ export enum CommonActionType {
     MOVE_CELL_UP = 'action.move_cell_up',
     OPEN_SETTINGS = 'action.open_settings',
     PostOutgoingMessage = 'action.postOutgoingMessage',
+    REDO = 'action.redo',
     REFRESH_VARIABLES = 'action.refresh_variables',
     RESTART_KERNEL = 'action.restart_kernel_action',
     RUN_BY_LINE = 'action.run_by_line',
@@ -82,8 +83,10 @@ export enum CommonActionType {
     TOGGLE_LINE_NUMBERS = 'action.toggle_line_numbers',
     TOGGLE_OUTPUT = 'action.toggle_output',
     TOGGLE_VARIABLE_EXPLORER = 'action.toggle_variable_explorer',
+    UNDO = 'action.undo',
     UNFOCUS_CELL = 'action.unfocus_cell',
-    UNMOUNT = 'action.unmount'
+    UNMOUNT = 'action.unmount',
+    VARIABLE_VIEW_LOADED = 'action.variable_view_loaded'
 }
 
 export type CommonActionTypeMapping = {
@@ -102,7 +105,7 @@ export type CommonActionTypeMapping = {
     [CommonActionType.EXECUTE_CELL]: IExecuteAction;
     [CommonActionType.EXECUTE_ALL_CELLS]: never | undefined;
     [CommonActionType.EXECUTE_ABOVE]: ICellAction;
-    [CommonActionType.EXECUTE_CELL_AND_BELOW]: ICellAction;
+    [CommonActionType.EXECUTE_CELL_AND_BELOW]: IExecuteAction;
     [CommonActionType.RESTART_KERNEL]: never | undefined;
     [CommonActionType.INTERRUPT_KERNEL]: never | undefined;
     [CommonActionType.EXPORT]: never | undefined;
@@ -146,6 +149,9 @@ export type CommonActionTypeMapping = {
     [CommonActionType.STEP]: ICellAction;
     [CommonActionType.CONTINUE]: ICellAction;
     [CommonActionType.RUN_BY_LINE]: ICellAction;
+    [CommonActionType.VARIABLE_VIEW_LOADED]: never | undefined;
+    [CommonActionType.UNDO]: never | undefined;
+    [CommonActionType.REDO]: never | undefined;
 };
 
 export interface IShowDataViewerAction extends IShowDataViewer {}
@@ -192,6 +198,7 @@ export interface IEditCellAction extends ICodeAction {
 // I.e. when using the operation `add`, we need the corresponding `IAddCellAction`.
 // They are mutually exclusive, if not `add`, then there's no `newCellId`.
 export type IExecuteAction = ICellAction & {
+    code: string;
     moveOp: 'select' | 'none' | 'add';
 };
 
