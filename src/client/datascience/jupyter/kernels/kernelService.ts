@@ -7,40 +7,27 @@ import type { nbformat } from '@jupyterlab/coreutils';
 import type { Kernel } from '@jupyterlab/services';
 import { inject, injectable } from 'inversify';
 import * as path from 'path';
-import * as uuid from 'uuid/v4';
-import { CancellationToken, CancellationTokenSource } from 'vscode';
+import { CancellationToken } from 'vscode';
 import { IPythonExtensionChecker } from '../../../api/types';
-import { Cancellation, wrapCancellationTokens } from '../../../common/cancellation';
+import { Cancellation } from '../../../common/cancellation';
 import { PYTHON_LANGUAGE, PYTHON_WARNINGS } from '../../../common/constants';
 import '../../../common/extensions';
 import { traceDecorators, traceError, traceInfo, traceVerbose, traceWarning } from '../../../common/logger';
 import { IFileSystem } from '../../../common/platform/types';
 
-import { IPythonExecutionFactory } from '../../../common/process/types';
 import { ReadWrite } from '../../../common/types';
-import { sleep } from '../../../common/utils/async';
 import { noop } from '../../../common/utils/misc';
 import { IEnvironmentActivationService } from '../../../interpreter/activation/types';
 import { IInterpreterService } from '../../../interpreter/contracts';
 import { PythonEnvironment } from '../../../pythonEnvironments/info';
-import { captureTelemetry, sendTelemetryEvent } from '../../../telemetry';
-import { getRealPath } from '../../common';
+import { sendTelemetryEvent } from '../../../telemetry';
 import { Telemetry } from '../../constants';
 import { reportAction } from '../../progress/decorator';
 import { ReportableAction } from '../../progress/types';
-import {
-    IJupyterKernelSpec,
-    IJupyterSessionManager,
-    IJupyterSubCommandExecutionService,
-    IKernelDependencyService,
-    KernelInterpreterDependencyResponse
-} from '../../types';
-import { cleanEnvironment, detectDefaultKernelName } from './helpers';
+import { IJupyterKernelSpec, IJupyterSessionManager, IJupyterSubCommandExecutionService } from '../../types';
+import { cleanEnvironment, createDefaultKernelSpec, detectDefaultKernelName } from './helpers';
 import { JupyterKernelSpec } from './jupyterKernelSpec';
 import { LiveKernelModel } from './types';
-
-// eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
-const NamedRegexp = require('named-js-regexp') as typeof import('named-js-regexp');
 
 /**
  * Helper to ensure we can differentiate between two types in union types, keeping typing information.
@@ -66,9 +53,7 @@ export class KernelService {
     constructor(
         @inject(IJupyterSubCommandExecutionService)
         private readonly jupyterInterpreterExecService: IJupyterSubCommandExecutionService,
-        @inject(IPythonExecutionFactory) private readonly execFactory: IPythonExecutionFactory,
         @inject(IInterpreterService) private readonly interpreterService: IInterpreterService,
-        @inject(IKernelDependencyService) private readonly kernelDependencyService: IKernelDependencyService,
         @inject(IFileSystem) private readonly fs: IFileSystem,
         @inject(IEnvironmentActivationService) private readonly activationHelper: IEnvironmentActivationService,
         @inject(IPythonExtensionChecker) private readonly extensionChecker: IPythonExtensionChecker
@@ -257,9 +242,8 @@ export class KernelService {
             }
         }
     }
-    public async searchAndRegisterKernel(
+    public async searchForKernel(
         interpreter: PythonEnvironment,
-        disableUI?: boolean,
         cancelToken?: CancellationToken
     ): Promise<IJupyterKernelSpec | undefined> {
         // If a kernelspec already exists for this, then use that.
@@ -273,133 +257,11 @@ export class KernelService {
 
             return found;
         }
-        return this.registerKernel(interpreter, disableUI, cancelToken);
+
+        // Otherwise create one from the interpreter itself
+        return createDefaultKernelSpec(interpreter);
     }
 
-    /**
-     * Registers an interpreter as a kernel.
-     * The assumption is that `ipykernel` has been installed in the interpreter.
-     * Kernel created will have following characteristics:
-     * - display_name = Display name of the interpreter.
-     * - metadata.interperter = Interpreter information (useful in finding a kernel that matches a given interpreter)
-     * - env = Will have environment variables of the activated environment.
-     *
-     * @param {PythonEnvironment} interpreter
-     * @param {boolean} [disableUI]
-     * @param {CancellationToken} [cancelToken]
-     * @returns {Promise<IJupyterKernelSpec>}
-     * @memberof KernelService
-     */
-    // eslint-disable-next-line
-    // eslint-disable-next-line complexity
-    @captureTelemetry(Telemetry.RegisterInterpreterAsKernel, undefined, true)
-    @traceDecorators.error('Failed to register an interpreter as a kernel')
-    @reportAction(ReportableAction.KernelsRegisterKernel)
-    // eslint-disable-next-line
-    public async registerKernel(
-        interpreter: PythonEnvironment,
-        disableUI?: boolean,
-        cancelToken?: CancellationToken
-    ): Promise<IJupyterKernelSpec | undefined> {
-        if (!interpreter.displayName) {
-            throw new Error('Interpreter does not have a display name');
-        }
-
-        const execServicePromise = this.execFactory.createActivatedEnvironment({
-            interpreter,
-            allowEnvironmentFetchExceptions: true,
-            bypassCondaExecution: true
-        });
-        // Swallow errors if we get out of here and not resolve this.
-        execServicePromise.ignoreErrors();
-        const name = this.generateKernelNameForInterpreter(interpreter);
-        // If ipykernel is not installed, prompt to install it.
-        if (!(await this.kernelDependencyService.areDependenciesInstalled(interpreter, cancelToken)) && !disableUI) {
-            // If we wish to wait for installation to complete, we must provide a cancel token.
-            const token = new CancellationTokenSource();
-            const response = await this.kernelDependencyService.installMissingDependencies(
-                interpreter,
-                wrapCancellationTokens(cancelToken, token.token)
-            );
-            if (response !== KernelInterpreterDependencyResponse.ok) {
-                traceWarning(
-                    `Prompted to install ipykernel, however ipykernel not installed in the interpreter ${interpreter.path}. Response ${response}`
-                );
-                return;
-            }
-        }
-
-        if (Cancellation.isCanceled(cancelToken)) {
-            return;
-        }
-
-        const execService = await execServicePromise;
-        const output = await execService.execModule(
-            'ipykernel',
-            ['install', '--user', '--name', name, '--display-name', interpreter.displayName],
-            {
-                throwOnStdErr: false,
-                encoding: 'utf8',
-                token: cancelToken
-            }
-        );
-        if (Cancellation.isCanceled(cancelToken)) {
-            return;
-        }
-
-        let kernel = await this.findMatchingKernelSpec(
-            { display_name: interpreter.displayName, name },
-            undefined,
-            cancelToken
-        );
-        // Wait for at least 5s. We know launching a python (conda env) process on windows can sometimes take around 4s.
-        for (let counter = 0; counter < 10; counter += 1) {
-            if (Cancellation.isCanceled(cancelToken)) {
-                return;
-            }
-            if (kernel) {
-                break;
-            }
-            traceWarning('Waiting for 500ms for registered kernel to get detected');
-            // Wait for jupyter server to get updated with the new kernel information.
-            await sleep(500);
-            kernel = await this.findMatchingKernelSpec(
-                { display_name: interpreter.displayName, name },
-                undefined,
-                cancelToken
-            );
-        }
-        if (!kernel) {
-            // Possible user doesn't have kernelspec installed.
-            kernel = await this.getKernelSpecFromStdOut(await execService.getExecutablePath(), output.stdout).catch(
-                (ex) => {
-                    traceError('Failed to get kernelspec from stdout', ex);
-                    return undefined;
-                }
-            );
-        }
-        if (!kernel) {
-            const error = `Kernel not created with the name ${name}, display_name ${interpreter.displayName}. Output is ${output.stdout}`;
-            throw new Error(error);
-        }
-        if (!(kernel instanceof JupyterKernelSpec)) {
-            const error = `Kernel not registered locally, created with the name ${name}, display_name ${interpreter.displayName}. Output is ${output.stdout}`;
-            throw new Error(error);
-        }
-        if (!kernel.specFile) {
-            const error = `kernel.json not created with the name ${name}, display_name ${interpreter.displayName}. Output is ${output.stdout}`;
-            throw new Error(error);
-        }
-
-        // Update the json with our environment.
-        await this.updateKernelEnvironment(interpreter, kernel, cancelToken, true);
-
-        sendTelemetryEvent(Telemetry.RegisterAndUseInterpreterAsKernel);
-        traceInfo(
-            `Kernel successfully registered for ${interpreter.path} with the name=${name} and spec can be found here ${kernel.specFile}`
-        );
-        return kernel;
-    }
     public async updateKernelEnvironment(
         interpreter: PythonEnvironment | undefined,
         kernel: IJupyterKernelSpec,
@@ -504,63 +366,5 @@ export class KernelService {
         });
 
         return result;
-    }
-    /**
-     * Not all characters are allowed in a kernel name.
-     * This method will generate a name for a kernel based on display name and path.
-     * Algorithm = <displayname - invalid characters> + <hash of path>
-     *
-     * @private
-     * @param {PythonEnvironment} interpreter
-     * @memberof KernelService
-     */
-    private generateKernelNameForInterpreter(interpreter: PythonEnvironment): string {
-        // Never change this logic, this is used in other places to determine the format of names we have generated.
-        return `${interpreter.displayName || ''}${uuid()}`.replace(/[^A-Za-z0-9]/g, '').toLowerCase();
-    }
-
-    /**
-     * Will scrape kernelspec info from the output when a new kernel is created.
-     *
-     * @private
-     * @param {string} output
-     * @returns {JupyterKernelSpec}
-     * @memberof KernelService
-     */
-    @traceDecorators.error('Failed to parse kernel creation stdout')
-    private async getKernelSpecFromStdOut(pythonPath: string, output: string): Promise<JupyterKernelSpec | undefined> {
-        if (!output) {
-            return;
-        }
-
-        // Output should be of the form
-        // `Installed kernel <kernelname> in <path>`
-        const regEx = NamedRegexp('Installed\\skernelspec\\s(?<name>\\w*)\\sin\\s(?<path>.*)', 'g');
-        const match = regEx.exec(output);
-        if (!match || !match.groups()) {
-            return;
-        }
-
-        type RegExGroup = { name: string; path: string };
-        const groups = match.groups() as RegExGroup | undefined;
-
-        if (!groups || !groups.name || !groups.path) {
-            traceError('Kernel Output not parsed', output);
-            throw new Error('Unable to parse output to get the kernel info');
-        }
-
-        const specFile = await getRealPath(
-            this.fs,
-            this.execFactory,
-            pythonPath,
-            path.join(groups.path, 'kernel.json')
-        );
-        if (!specFile) {
-            throw new Error('KernelSpec file not found');
-        }
-
-        const kernelModel = JSON.parse(await this.fs.readLocalFile(specFile));
-        kernelModel.name = groups.name;
-        return new JupyterKernelSpec(kernelModel as Kernel.ISpecModel, specFile);
     }
 }

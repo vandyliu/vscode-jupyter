@@ -10,13 +10,7 @@ import { NotebookCell, NotebookDocument } from '../../../../../types/vscode-prop
 import type { ServerStatus } from '../../../../datascience-ui/interactive-common/mainState';
 import type { IAsyncDisposable, Resource } from '../../../common/types';
 import type { PythonEnvironment } from '../../../pythonEnvironments/info';
-import type {
-    IJupyterKernel,
-    IJupyterKernelSpec,
-    IJupyterSessionManager,
-    InterruptResult,
-    KernelSocketInformation
-} from '../../types';
+import type { IJupyterKernel, IJupyterKernelSpec, InterruptResult, KernelSocketInformation } from '../../types';
 import { isPythonKernelConnection } from './helpers';
 
 export type LiveKernelModel = IJupyterKernel & Partial<IJupyterKernelSpec> & { session: Session.IModel };
@@ -137,21 +131,6 @@ export interface IKernelSpecQuickPickItem<T extends KernelConnectionMetadata = K
 }
 export interface IKernelSelectionListProvider<T extends KernelConnectionMetadata = KernelConnectionMetadata> {
     getKernelSelections(resource: Resource, cancelToken?: CancellationToken): Promise<IKernelSpecQuickPickItem<T>[]>;
-}
-
-export interface IKernelSelectionUsage {
-    /**
-     * Given a kernel selection, this method will attempt to use that kernel and return the corresponding Interpreter, Kernel Spec and the like.
-     * This method will also check if required dependencies are installed or not, and will install them if required.
-     */
-    useSelectedKernel(
-        selection: KernelConnectionMetadata,
-        resource: Resource,
-        type: 'raw' | 'jupyter' | 'noConnection',
-        session?: IJupyterSessionManager,
-        cancelToken?: CancellationToken,
-        disableUI?: boolean
-    ): Promise<KernelConnectionMetadata | undefined>;
 }
 
 export interface IKernel extends IAsyncDisposable {

@@ -11,7 +11,7 @@ import { DataScience } from '../../../common/utils/localize';
 import { JupyterSessionStartError } from '../../baseJupyterSession';
 import { Settings } from '../../constants';
 import { RawKernelSessionStartError } from '../../raw-kernel/rawJupyterSession';
-import { IKernelDependencyService, INotebook, KernelInterpreterDependencyResponse } from '../../types';
+import { INotebook } from '../../types';
 import { JupyterInvalidKernelError } from '../jupyterInvalidKernelError';
 import { getDisplayNameOrNameOfKernelConnection } from './helpers';
 import { KernelSelector } from './kernelSelector';
@@ -22,7 +22,6 @@ export class KernelSwitcher {
     constructor(
         @inject(IConfigurationService) private configService: IConfigurationService,
         @inject(IApplicationShell) private appShell: IApplicationShell,
-        @inject(IKernelDependencyService) private readonly kernelDependencyService: IKernelDependencyService,
         @inject(KernelSelector) private readonly selector: KernelSelector
     ) {}
 
@@ -54,11 +53,7 @@ export class KernelSwitcher {
                     // Looks like we were unable to start a session for the local connection.
                     // Possibly something wrong with the kernel.
                     // At this point we have a valid jupyter server.
-                    const potential = await this.selector.askForLocalKernel(
-                        notebook.resource,
-                        notebook.connection?.type || 'noConnection',
-                        kernel
-                    );
+                    const potential = await this.selector.askForLocalKernel(notebook.resource, kernel);
                     if (potential && Object.keys(potential).length > 0) {
                         kernel = potential;
                         continue;
@@ -69,15 +64,6 @@ export class KernelSwitcher {
         }
     }
     private async switchToKernel(notebook: INotebook, kernelConnection: KernelConnectionMetadata): Promise<void> {
-        if (notebook.connection?.type === 'raw' && kernelConnection.interpreter) {
-            const response = await this.kernelDependencyService.installMissingDependencies(
-                kernelConnection.interpreter
-            );
-            if (response === KernelInterpreterDependencyResponse.cancel) {
-                return;
-            }
-        }
-
         const switchKernel = async (newKernelConnection: KernelConnectionMetadata) => {
             // Change the kernel. A status update should fire that changes our display
             await notebook.setKernelConnection(

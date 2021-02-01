@@ -29,7 +29,6 @@ import { createDeferred } from '../../../common/utils/async';
 import * as localize from '../../../common/utils/localize';
 import { noop } from '../../../common/utils/misc';
 import { IServiceContainer } from '../../../ioc/types';
-import { PythonEnvironment } from '../../../pythonEnvironments/info';
 import { sendTelemetryEvent } from '../../../telemetry';
 import { Identifiers, LiveShare, LiveShareCommands, Settings, Telemetry } from '../../constants';
 import { computeWorkingDirectory } from '../../jupyter/jupyterUtils';
@@ -43,13 +42,11 @@ import { IRoleBasedObject } from '../../jupyter/liveshare/roleBasedFactory';
 import { IKernelLauncher } from '../../kernel-launcher/types';
 import { ProgressReporter } from '../../progress/progressReporter';
 import {
-    IKernelDependencyService,
     INotebook,
     INotebookExecutionInfo,
     INotebookExecutionLogger,
     IRawNotebookProvider,
-    IRawNotebookSupportedService,
-    KernelInterpreterDependencyResponse
+    IRawNotebookSupportedService
 } from '../../types';
 import { calculateWorkingDirectory } from '../../utils';
 import { RawJupyterSession } from '../rawJupyterSession';
@@ -77,7 +74,6 @@ export class HostRawNotebookProvider
         private progressReporter: ProgressReporter,
         private outputChannel: IOutputChannel,
         rawNotebookSupported: IRawNotebookSupportedService,
-        private readonly kernelDependencyService: IKernelDependencyService,
         private readonly kernelService: KernelService,
         private readonly extensionChecker: IPythonExtensionChecker,
         private readonly vscodeNotebook: IVSCodeNotebook
@@ -186,10 +182,7 @@ export class HostRawNotebookProvider
                             readWriteConnection.kernelSpec.interpreterPath || readWriteConnection.interpreter?.path;
                     }
                 }
-                if (kernelConnection.interpreter) {
-                    // Install missing dependencies only if we're dealing with a Python kernel.
-                    await this.installDependenciesIntoInterpreter(kernelConnection.interpreter, cancelToken, disableUI);
-                } else {
+                if (!kernelConnection.interpreter) {
                     traceError('No interpreter fetched to start a raw kernel');
                 }
             }
@@ -198,10 +191,7 @@ export class HostRawNotebookProvider
                 kernelConnection ||
                 (await this.kernelSelector.getPreferredKernelForLocalConnection(
                     resource,
-                    'raw',
-                    undefined,
                     notebookMetadata,
-                    disableUI,
                     cancelToken
                 ));
 
@@ -285,25 +275,6 @@ export class HostRawNotebookProvider
         }
 
         return notebookPromise.promise;
-    }
-
-    // If we need to install our dependencies now (for non-native scenarios)
-    // then install ipykernel into the interpreter or throw error
-    private async installDependenciesIntoInterpreter(
-        interpreter: PythonEnvironment,
-        cancelToken?: CancellationToken,
-        disableUI?: boolean
-    ) {
-        if (
-            (await this.kernelDependencyService.installMissingDependencies(interpreter, cancelToken, disableUI)) !==
-            KernelInterpreterDependencyResponse.ok
-        ) {
-            throw new Error(
-                localize.DataScience.ipykernelNotInstalled().format(
-                    `${interpreter.displayName || interpreter.path}:${interpreter.path}`
-                )
-            );
-        }
     }
 
     // Get the notebook execution info for this raw session instance

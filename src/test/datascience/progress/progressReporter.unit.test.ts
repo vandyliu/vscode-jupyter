@@ -103,10 +103,6 @@ suite('DataScience - Progress Reporter', () => {
         reporter.report({ action: ReportableAction.KernelsGetKernelSpecs, phase: 'started' });
         expectedProgressMessages.push(getUserMessageForAction(ReportableAction.KernelsGetKernelSpecs)!);
 
-        //3. Register kernel & ensure we display registering message.
-        reporter.report({ action: ReportableAction.KernelsRegisterKernel, phase: 'started' });
-        expectedProgressMessages.push(getUserMessageForAction(ReportableAction.KernelsRegisterKernel)!);
-
         //4. Wait for idle & ensure we display registering message.
         reporter.report({ action: ReportableAction.JupyterSessionWaitForIdleSession, phase: 'started' });
         expectedProgressMessages.push(getUserMessageForAction(ReportableAction.JupyterSessionWaitForIdleSession)!);
@@ -114,14 +110,6 @@ suite('DataScience - Progress Reporter', () => {
         //5. Finish getting kernel specs, should display previous (idle) message again.
         reporter.report({ action: ReportableAction.KernelsGetKernelSpecs, phase: 'completed' });
         expectedProgressMessages.push(getUserMessageForAction(ReportableAction.JupyterSessionWaitForIdleSession)!);
-
-        //6. Finish waiting for idle, should display the register kernel as that's still in progress.
-        reporter.report({ action: ReportableAction.JupyterSessionWaitForIdleSession, phase: 'completed' });
-        expectedProgressMessages.push(getUserMessageForAction(ReportableAction.KernelsRegisterKernel)!);
-
-        //6. Finish registering kernel, should display the starting notebook as that's still in progress.
-        reporter.report({ action: ReportableAction.KernelsRegisterKernel, phase: 'completed' });
-        expectedProgressMessages.push(getUserMessageForAction(ReportableAction.NotebookStart)!);
 
         //6. Finish starting notebook, no new messages to display.
         reporter.report({ action: ReportableAction.NotebookStart, phase: 'completed' });

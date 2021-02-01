@@ -80,7 +80,6 @@ export class NotebookCommands implements IDisposable {
             const kernel = await this.kernelSelector.selectJupyterKernel(
                 options.identity,
                 connection,
-                connection?.type || this.notebookProvider.type,
                 options.currentKernelDisplayName
             );
             if (kernel) {

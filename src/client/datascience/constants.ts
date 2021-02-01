@@ -372,7 +372,6 @@ export enum Telemetry {
     NumberOfLocalKernelSpecs = 'DS_INTERNAL.LOCAL_KERNEL_SPEC_COUNT',
     NumberOfRemoteKernelSpecs = 'DS_INTERNAL.REMOTE_KERNEL_SPEC_COUNT',
     KernelSpecNotFound = 'DS_INTERNAL.KERNEL_SPEC_NOT_FOUND',
-    KernelRegisterFailed = 'DS_INTERNAL.KERNEL_REGISTER_FAILED',
     KernelEnumeration = 'DS_INTERNAL.KERNEL_ENUMERATION',
     KernelLauncherPerf = 'DS_INTERNAL.KERNEL_LAUNCHER_PERF',
     KernelProviderPerf = 'DS_INTERNAL.KERNEL_PROVIDER_PERF',

@@ -26,10 +26,6 @@ export enum ReportableAction {
      */
     KernelsGetKernelForRemoteConnection = 'KernelsGetKernelForRemoteConnection',
     /**
-     * Registering kernel.
-     */
-    KernelsRegisterKernel = 'KernelsRegisterKernel',
-    /**
      * Retrieving kernel specs.
      */
     KernelsGetKernelSpecs = 'KernelsGetKernelSpecs',

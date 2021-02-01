@@ -11,7 +11,6 @@ const progressMessages = {
     [ReportableAction.KernelsGetKernelForLocalConnection]: DataScience.gettingListOfKernelsForLocalConnection(),
     [ReportableAction.KernelsGetKernelForRemoteConnection]: DataScience.gettingListOfKernelsForRemoteConnection(),
     [ReportableAction.KernelsGetKernelSpecs]: DataScience.gettingListOfKernelSpecs(),
-    [ReportableAction.KernelsRegisterKernel]: DataScience.registeringKernel(),
     [ReportableAction.NotebookConnect]: DataScience.connectingToJupyter(),
     [ReportableAction.NotebookStart]: DataScience.startingJupyterNotebook(),
     [ReportableAction.RawKernelConnecting]: DataScience.rawKernelConnectingSession(),

@@ -16,7 +16,6 @@ import {
     IVSCodeNotebook,
     IWorkspaceService
 } from '../../../common/application/types';
-import { isTestExecution } from '../../../common/constants';
 import { traceInfo } from '../../../common/logger';
 import { IFileSystem } from '../../../common/platform/types';
 import {
@@ -341,14 +340,7 @@ export class HostJupyterServer extends LiveShareParticipantHost(JupyterServerBas
                 kernelInfo = kernelConnection;
             } else {
                 kernelInfo = await (launchInfo.connectionInfo.localLaunch
-                    ? this.kernelSelector.getPreferredKernelForLocalConnection(
-                          resource,
-                          'jupyter',
-                          sessionManager,
-                          notebookMetadata,
-                          isTestExecution(),
-                          cancelToken
-                      )
+                    ? this.kernelSelector.getPreferredKernelForLocalConnection(resource, notebookMetadata, cancelToken)
                     : this.kernelSelector.getPreferredKernelForRemoteConnection(
                           resource,
                           sessionManager,

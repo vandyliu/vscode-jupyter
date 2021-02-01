@@ -1200,7 +1200,6 @@ export abstract class InteractiveBase extends WebviewPanelHost<IInteractiveWindo
                     // Ask the user for a new local kernel
                     const newKernel = await this.selector.askForLocalKernel(
                         this.owningResource,
-                        serverConnection.type,
                         e.kernelConnectionMetadata
                     );
                     if (newKernel && kernelConnectionMetadataHasKernelSpec(newKernel) && newKernel.kernelSpec) {

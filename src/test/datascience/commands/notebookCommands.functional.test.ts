@@ -15,7 +15,6 @@ import { NotebookProvider } from '../../../client/datascience/interactive-common
 import { InteractiveWindowProvider } from '../../../client/datascience/interactive-window/interactiveWindowProvider';
 import { JupyterNotebookBase } from '../../../client/datascience/jupyter/jupyterNotebook';
 import { JupyterSessionManagerFactory } from '../../../client/datascience/jupyter/jupyterSessionManagerFactory';
-import { KernelDependencyService } from '../../../client/datascience/jupyter/kernels/kernelDependencyService';
 import { KernelSelectionProvider } from '../../../client/datascience/jupyter/kernels/kernelSelections';
 import { KernelSelector } from '../../../client/datascience/jupyter/kernels/kernelSelector';
 import { KernelService } from '../../../client/datascience/jupyter/kernels/kernelService';
@@ -100,22 +99,15 @@ suite('DataScience - Notebook Commands', () => {
                 notebookProvider = mock(NotebookProvider);
                 commandManager = mock(CommandManager);
 
-                const kernelDependencyService = mock(KernelDependencyService);
                 const kernelService = mock(KernelService);
                 kernelSelectionProvider = mock(KernelSelectionProvider);
-                when(
-                    kernelSelectionProvider.getKernelSelectionsForLocalSession(
-                        anything(),
-                        anything(),
-                        anything(),
-                        anything()
-                    )
-                ).thenResolve(localSelections);
+                when(kernelSelectionProvider.getKernelSelectionsForLocalSession(anything(), anything())).thenResolve(
+                    localSelections
+                );
                 when(
                     kernelSelectionProvider.getKernelSelectionsForRemoteSession(anything(), anything(), anything())
                 ).thenResolve(remoteSelections);
                 const appShell = mock(ApplicationShell);
-                const dependencyService = mock(KernelDependencyService);
                 const interpreterService = mock<IInterpreterService>();
                 const kernelFinder = mock<IKernelFinder>();
                 const jupyterSessionManagerFactory = mock(JupyterSessionManagerFactory);
@@ -146,7 +138,6 @@ suite('DataScience - Notebook Commands', () => {
                     instance(appShell),
                     instance(kernelService),
                     instance(interpreterService),
-                    instance(dependencyService),
                     instance(kernelFinder),
                     instance(jupyterSessionManagerFactory),
                     instance(configService),
@@ -154,12 +145,7 @@ suite('DataScience - Notebook Commands', () => {
                     instance(preferredKernelIdProvider)
                 );
 
-                const kernelSwitcher = new KernelSwitcher(
-                    instance(configService),
-                    instance(appShell),
-                    instance(kernelDependencyService),
-                    kernelSelector
-                );
+                const kernelSwitcher = new KernelSwitcher(instance(configService), instance(appShell), kernelSelector);
 
                 notebookCommands = new NotebookCommands(
                     instance(commandManager),
@@ -211,14 +197,7 @@ suite('DataScience - Notebook Commands', () => {
                 });
                 test('Should not switch if no identity', async () => {
                     await commandHandler.bind(notebookCommands)();
-                    verify(
-                        kernelSelectionProvider.getKernelSelectionsForLocalSession(
-                            anything(),
-                            anything(),
-                            anything(),
-                            anything()
-                        )
-                    ).never();
+                    verify(kernelSelectionProvider.getKernelSelectionsForLocalSession(anything(), anything())).never();
                 });
                 test('Should switch kernel using the provided notebook', async () => {
                     const notebook = createNotebookMock();

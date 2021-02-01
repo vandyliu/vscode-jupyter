@@ -30,13 +30,7 @@ import {
 } from '../jupyter/kernels/types';
 import { INotebookStorageProvider } from '../notebookStorage/notebookStorageProvider';
 import { PreferredRemoteKernelIdProvider } from '../notebookStorage/preferredRemoteKernelIdProvider';
-import {
-    IJupyterSessionManager,
-    IJupyterSessionManagerFactory,
-    INotebook,
-    INotebookProvider,
-    IRawNotebookSupportedService
-} from '../types';
+import { IJupyterSessionManager, IJupyterSessionManagerFactory, INotebook, INotebookProvider } from '../types';
 import {
     getNotebookMetadata,
     isJupyterKernel,
@@ -53,7 +47,6 @@ export class VSCodeKernelPickerProvider implements INotebookKernelProvider {
     }
     private readonly _onDidChangeKernels = new EventEmitter<NotebookDocument | undefined>();
     private notebookKernelChangeHandled = new WeakSet<INotebook>();
-    private isRawNotebookSupported?: Promise<boolean>;
     constructor(
         @inject(KernelSelectionProvider) private readonly kernelSelectionProvider: KernelSelectionProvider,
         @inject(KernelSelector) private readonly kernelSelector: KernelSelector,
@@ -64,7 +57,6 @@ export class VSCodeKernelPickerProvider implements INotebookKernelProvider {
         @inject(KernelSwitcher) private readonly kernelSwitcher: KernelSwitcher,
         @inject(IDisposableRegistry) private readonly disposables: IDisposableRegistry,
         @inject(IExtensionContext) private readonly context: IExtensionContext,
-        @inject(IRawNotebookSupportedService) private readonly rawNotebookSupported: IRawNotebookSupportedService,
         @inject(INotebookKernelResolver) private readonly kernelResolver: INotebookKernelResolver,
         @inject(IConfigurationService) private readonly configuration: IConfigurationService,
         @inject(IJupyterSessionManagerFactory)
@@ -205,20 +197,10 @@ export class VSCodeKernelPickerProvider implements INotebookKernelProvider {
         >[]
     > {
         if (this.isLocalLaunch()) {
-            this.isRawNotebookSupported =
-                this.isRawNotebookSupported || this.rawNotebookSupported.isSupportedForLocalLaunch();
-
-            const isRawSupported = await this.isRawNotebookSupported;
             if (token.isCancellationRequested) {
                 return [];
             }
-
-            return this.kernelSelectionProvider.getKernelSelectionsForLocalSession(
-                document.uri,
-                isRawSupported ? 'raw' : 'jupyter',
-                undefined,
-                token
-            );
+            return this.kernelSelectionProvider.getKernelSelectionsForLocalSession(document.uri, token);
         } else {
             if (!sessionManager) {
                 throw new Error('Session Manager not available');
@@ -318,21 +300,10 @@ export class VSCodeKernelPickerProvider implements INotebookKernelProvider {
         }
 
         if (this.isLocalLaunch()) {
-            this.isRawNotebookSupported =
-                this.isRawNotebookSupported || this.rawNotebookSupported.isSupportedForLocalLaunch();
-            const rawSupported = await this.isRawNotebookSupported;
-            if (token.isCancellationRequested) {
-                return;
-            }
-
             return this.kernelSelector.getPreferredKernelForLocalConnection(
                 document.uri,
-                rawSupported ? 'raw' : 'jupyter',
-                undefined,
                 getNotebookMetadata(document),
-                true,
-                token,
-                true
+                token
             );
         } else {
             return this.kernelSelector.getPreferredKernelForRemoteConnection(

@@ -29,7 +29,6 @@ import { IKernelLauncher } from '../kernel-launcher/types';
 import { ProgressReporter } from '../progress/progressReporter';
 import {
     ConnectNotebookProviderOptions,
-    IKernelDependencyService,
     INotebook,
     IRawConnection,
     IRawNotebookProvider,
@@ -57,7 +56,6 @@ type RawNotebookProviderClassType = {
         progressReporter: ProgressReporter,
         outputChannel: IOutputChannel,
         rawKernelSupported: IRawNotebookSupportedService,
-        kernelDependencyService: IKernelDependencyService,
         kernelService: KernelService,
         extensionChecker: IPythonExtensionChecker,
         vscNotebook: IVSCodeNotebook
@@ -86,7 +84,6 @@ export class RawNotebookProviderWrapper implements IRawNotebookProvider, ILiveSh
         @inject(ProgressReporter) progressReporter: ProgressReporter,
         @inject(IOutputChannel) @named(JUPYTER_OUTPUT_CHANNEL) outputChannel: IOutputChannel,
         @inject(IRawNotebookSupportedService) rawNotebookSupported: IRawNotebookSupportedService,
-        @inject(IKernelDependencyService) kernelDependencyService: IKernelDependencyService,
         @inject(KernelService) kernelService: KernelService,
         @inject(IPythonExtensionChecker) extensionChecker: IPythonExtensionChecker,
         @inject(IVSCodeNotebook) vscNotebook: IVSCodeNotebook
@@ -111,7 +108,6 @@ export class RawNotebookProviderWrapper implements IRawNotebookProvider, ILiveSh
             progressReporter,
             outputChannel,
             rawNotebookSupported,
-            kernelDependencyService,
             kernelService,
             extensionChecker,
             vscNotebook

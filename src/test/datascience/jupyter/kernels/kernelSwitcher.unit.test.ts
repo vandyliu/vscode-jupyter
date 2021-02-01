@@ -16,7 +16,6 @@ import { EXTENSION_ROOT_DIR } from '../../../../client/constants';
 import { JupyterSessionStartError } from '../../../../client/datascience/baseJupyterSession';
 import { NotebookProvider } from '../../../../client/datascience/interactive-common/notebookProvider';
 import { JupyterNotebookBase } from '../../../../client/datascience/jupyter/jupyterNotebook';
-import { KernelDependencyService } from '../../../../client/datascience/jupyter/kernels/kernelDependencyService';
 import { KernelSelector } from '../../../../client/datascience/jupyter/kernels/kernelSelector';
 import { KernelSwitcher } from '../../../../client/datascience/jupyter/kernels/kernelSwitcher';
 import { KernelConnectionMetadata, LiveKernelModel } from '../../../../client/datascience/jupyter/kernels/types';
@@ -66,12 +65,7 @@ suite('DataScience - Kernel Switcher', () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         when(notebook.connection).thenReturn(instance(connection));
         when(configService.getSettings(anything())).thenReturn(instance(settings));
-        kernelSwitcher = new KernelSwitcher(
-            instance(configService),
-            instance(appShell),
-            instance(mock(KernelDependencyService)),
-            instance(kernelSelector)
-        );
+        kernelSwitcher = new KernelSwitcher(instance(configService), instance(appShell), instance(kernelSelector));
         when(appShell.withProgress(anything(), anything())).thenCall(async (_, cb: () => Promise<void>) => {
             await cb();
         });
@@ -137,7 +131,7 @@ suite('DataScience - Kernel Switcher', () => {
                             // This is expected
                         }
                         if (isLocalConnection) {
-                            verify(kernelSelector.askForLocalKernel(anything(), anything(), anything())).once();
+                            verify(kernelSelector.askForLocalKernel(anything(), anything())).once();
                         }
                     });
                 });

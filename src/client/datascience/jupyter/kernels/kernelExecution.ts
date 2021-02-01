@@ -23,7 +23,7 @@ import {
 import { CellExecutionFactory } from './cellExecution';
 import { CellExecutionQueue } from './cellExecutionQueue';
 import { isPythonKernelConnection } from './helpers';
-import type { IKernel, IKernelProvider, IKernelSelectionUsage, KernelConnectionMetadata } from './types';
+import type { IKernel, IKernelProvider, KernelConnectionMetadata } from './types';
 // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
 const vscodeNotebookEnums = require('vscode') as typeof import('vscode-proposed');
 
@@ -41,7 +41,6 @@ export class KernelExecution implements IDisposable {
         private readonly kernelProvider: IKernelProvider,
         errorHandler: IDataScienceErrorHandler,
         editorProvider: INotebookEditorProvider,
-        readonly kernelSelectionUsage: IKernelSelectionUsage,
         appShell: IApplicationShell,
         readonly vscNotebook: IVSCodeNotebook,
         readonly metadata: Readonly<KernelConnectionMetadata>,

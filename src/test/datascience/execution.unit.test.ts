@@ -944,16 +944,7 @@ suite('Jupyter Execution', async () => {
             path: '',
             env: undefined
         };
-        when(
-            kernelSelector.getPreferredKernelForLocalConnection(
-                anything(),
-                anything(),
-                anything(),
-                anything(),
-                anything(),
-                anything()
-            )
-        ).thenResolve({
+        when(kernelSelector.getPreferredKernelForLocalConnection(anything(), anything(), anything())).thenResolve({
             kernelSpec,
             kind: 'startUsingKernelSpec'
         });

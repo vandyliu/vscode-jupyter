@@ -813,13 +813,6 @@ export interface IEventNamePropertyMapping {
      */
     [Telemetry.KernelSpecNotFound]: undefined | never;
     /**
-     * Telemetry event sent to indicate registering a kernel with jupyter failed.
-     *
-     * @type {(undefined | never)}
-     * @memberof IEventNamePropertyMapping
-     */
-    [Telemetry.KernelRegisterFailed]: undefined | never;
-    /**
      * Telemetry event sent to every time a kernel enumeration is done
      *
      * @type {...}
