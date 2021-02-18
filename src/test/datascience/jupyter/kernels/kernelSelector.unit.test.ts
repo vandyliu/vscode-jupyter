@@ -24,7 +24,7 @@ import { KernelSelector } from '../../../../client/datascience/jupyter/kernels/k
 import { KernelService } from '../../../../client/datascience/jupyter/kernels/kernelService';
 import { LiveKernelModel } from '../../../../client/datascience/jupyter/kernels/types';
 import { IKernelFinder } from '../../../../client/datascience/kernel-launcher/types';
-import { IJupyterSessionManager } from '../../../../client/datascience/types';
+import { IJupyterSessionManager, IRawNotebookSupportedService } from '../../../../client/datascience/types';
 import { IInterpreterService } from '../../../../client/interpreter/contracts';
 import { PythonEnvironment } from '../../../../client/pythonEnvironments/info';
 import { PreferredRemoteKernelIdProvider } from '../../../../client/datascience/notebookStorage/preferredRemoteKernelIdProvider';
@@ -323,9 +323,7 @@ suite('DataScience - KernelSelector', () => {
             verify(appShell.showQuickPick(anything(), anything(), anything())).never();
         });
         test('If metadata contains kernel information, and there is matching kernelspec, then use current interpreter as a kernel', async () => {
-            when(
-                kernelService.findMatchingKernelSpec(nbMetadataKernelSpec, instance(sessionManager), anything())
-            ).thenResolve(undefined);
+            when(kernelFinder.findKernelSpec(anything(), nbMetadata, anything())).thenResolve(undefined);
             when(interpreterService.getActiveInterpreter(undefined)).thenResolve(interpreter);
             when(
                 appShell.showInformationMessage(localize.DataScience.fallbackToUseActiveInterpreterAsKernel())
@@ -361,11 +359,9 @@ suite('DataScience - KernelSelector', () => {
             ).once();
         });
         test('If metadata is empty, then use active interpreter and find a kernel matching active interpreter', async () => {
-            when(
-                kernelService.findMatchingKernelSpec(nbMetadataKernelSpec, instance(sessionManager), anything())
-            ).thenResolve(undefined);
+            when(kernelFinder.findKernelSpec(anything(), nbMetadata, anything())).thenResolve(undefined);
             when(interpreterService.getActiveInterpreter(undefined)).thenResolve(interpreter);
-            when(kernelService.searchForKernel(interpreter, anything())).thenResolve(kernelSpec);
+            when(kernelService.searchForKernel(anything(), interpreter, anything())).thenResolve(kernelSpec);
             when(kernelSelectionProvider.getKernelSelectionsForLocalSession(anything(), anything())).thenResolve();
 
             const kernel = await kernelSelector.getPreferredKernelForLocalConnection(undefined, undefined);
@@ -374,17 +370,13 @@ suite('DataScience - KernelSelector', () => {
             assert.deepEqual(kernel?.interpreter, interpreter);
             assert.isOk(selectLocalKernelStub.notCalled);
             verify(appShell.showInformationMessage(anything(), anything(), anything())).never();
-            verify(kernelService.searchForKernel(interpreter, anything())).once();
-            verify(
-                kernelService.findMatchingKernelSpec(nbMetadataKernelSpec, instance(sessionManager), anything())
-            ).never();
+            verify(kernelService.searchForKernel(anything(), interpreter, anything())).once();
+            verify(kernelFinder.findKernelSpec(anything(), nbMetadata, anything())).never();
             verify(kernelService.findMatchingInterpreter(kernelSpec, anything())).never();
             verify(appShell.showQuickPick(anything(), anything(), anything())).never();
         });
         test('Remote search works', async () => {
-            when(
-                kernelService.findMatchingKernelSpec(nbMetadataKernelSpec, instance(sessionManager), anything())
-            ).thenResolve(undefined);
+            when(kernelFinder.findKernelSpec(anything(), nbMetadata, anything())).thenResolve(undefined);
             when(kernelService.getKernelSpecs(anything(), anything())).thenResolve([
                 {
                     name: 'bar',
@@ -404,7 +396,7 @@ suite('DataScience - KernelSelector', () => {
                 }
             ]);
             when(interpreterService.getActiveInterpreter(undefined)).thenResolve(interpreter);
-            when(kernelService.searchForKernel(interpreter, anything())).thenResolve(kernelSpec);
+            when(kernelService.searchForKernel(anything(), interpreter, anything())).thenResolve(kernelSpec);
             when(kernelSelectionProvider.getKernelSelectionsForLocalSession(anything(), anything())).thenResolve();
 
             const kernel = await kernelSelector.getPreferredKernelForRemoteConnection(
@@ -418,17 +410,13 @@ suite('DataScience - KernelSelector', () => {
             assert.deepEqual(kernel?.interpreter, interpreter);
             assert.isOk(selectLocalKernelStub.notCalled);
             verify(appShell.showInformationMessage(anything(), anything(), anything())).never();
-            verify(kernelService.searchForKernel(interpreter, anything())).never();
-            verify(
-                kernelService.findMatchingKernelSpec(nbMetadataKernelSpec, instance(sessionManager), anything())
-            ).never();
+            verify(kernelService.searchForKernel(anything(), interpreter, anything())).never();
+            verify(kernelFinder.findKernelSpec(anything(), nbMetadata, anything())).never();
             verify(kernelService.findMatchingInterpreter(kernelSpec, anything())).never();
             verify(appShell.showQuickPick(anything(), anything(), anything())).never();
         });
         test('Remote search prefers same name as long as it is python', async () => {
-            when(
-                kernelService.findMatchingKernelSpec(nbMetadataKernelSpec, instance(sessionManager), anything())
-            ).thenResolve(undefined);
+            when(kernelFinder.findKernelSpec(anything(), nbMetadata, anything())).thenResolve(undefined);
             when(kernelService.getKernelSpecs(anything(), anything())).thenResolve([
                 {
                     name: 'bar',
@@ -456,7 +444,7 @@ suite('DataScience - KernelSelector', () => {
                 }
             ]);
             when(interpreterService.getActiveInterpreter(undefined)).thenResolve(interpreter);
-            when(kernelService.searchForKernel(interpreter, anything())).thenResolve(kernelSpec);
+            when(kernelService.searchForKernel(anything(), interpreter, anything())).thenResolve(kernelSpec);
             when(kernelSelectionProvider.getKernelSelectionsForLocalSession(anything(), anything())).thenResolve();
 
             const kernel = await kernelSelector.getPreferredKernelForRemoteConnection(
@@ -477,17 +465,13 @@ suite('DataScience - KernelSelector', () => {
             assert.deepEqual(kernel?.interpreter, interpreter);
             assert.isOk(selectLocalKernelStub.notCalled);
             verify(appShell.showInformationMessage(anything(), anything(), anything())).never();
-            verify(kernelService.searchForKernel(interpreter, anything())).never();
-            verify(
-                kernelService.findMatchingKernelSpec(nbMetadataKernelSpec, instance(sessionManager), anything())
-            ).never();
+            verify(kernelService.searchForKernel(anything(), interpreter, anything())).never();
+            verify(kernelFinder.findKernelSpec(anything(), nbMetadata, anything())).never();
             verify(kernelService.findMatchingInterpreter(kernelSpec, anything())).never();
             verify(appShell.showQuickPick(anything(), anything(), anything())).never();
         });
         test('Remote search prefers same version', async () => {
-            when(
-                kernelService.findMatchingKernelSpec(nbMetadataKernelSpec, instance(sessionManager), anything())
-            ).thenResolve(undefined);
+            when(kernelFinder.findKernelSpec(anything(), nbMetadata, anything())).thenResolve(undefined);
             when(kernelService.getKernelSpecs(anything(), anything())).thenResolve([
                 {
                     name: 'bar',
@@ -515,7 +499,7 @@ suite('DataScience - KernelSelector', () => {
                 }
             ]);
             when(interpreterService.getActiveInterpreter(undefined)).thenResolve(interpreter);
-            when(kernelService.searchForKernel(interpreter, anything())).thenResolve(kernelSpec);
+            when(kernelService.searchForKernel(anything(), interpreter, anything())).thenResolve(kernelSpec);
             when(kernelSelectionProvider.getKernelSelectionsForLocalSession(anything(), anything())).thenResolve();
 
             const kernel = await kernelSelector.getPreferredKernelForRemoteConnection(
@@ -536,10 +520,8 @@ suite('DataScience - KernelSelector', () => {
             assert.deepEqual(kernel?.interpreter, interpreter);
             assert.isOk(selectLocalKernelStub.notCalled);
             verify(appShell.showInformationMessage(anything(), anything(), anything())).never();
-            verify(kernelService.searchForKernel(interpreter, anything())).never();
-            verify(
-                kernelService.findMatchingKernelSpec(nbMetadataKernelSpec, instance(sessionManager), anything())
-            ).never();
+            verify(kernelService.searchForKernel(anything(), interpreter, anything())).never();
+            verify(kernelFinder.findKernelSpec(anything(), nbMetadata, anything())).never();
             verify(kernelService.findMatchingInterpreter(kernelSpec, anything())).never();
             verify(appShell.showQuickPick(anything(), anything(), anything())).never();
         });

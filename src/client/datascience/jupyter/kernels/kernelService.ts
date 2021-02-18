@@ -14,7 +14,7 @@ import '../../../common/extensions';
 import { traceDecorators, traceError, traceInfo, traceVerbose, traceWarning } from '../../../common/logger';
 import { IFileSystem } from '../../../common/platform/types';
 
-import { ReadWrite } from '../../../common/types';
+import { ReadWrite, Resource } from '../../../common/types';
 import { noop } from '../../../common/utils/misc';
 import { IEnvironmentActivationService } from '../../../interpreter/activation/types';
 import { IInterpreterService } from '../../../interpreter/contracts';

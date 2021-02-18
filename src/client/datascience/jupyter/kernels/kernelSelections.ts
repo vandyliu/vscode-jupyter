@@ -141,13 +141,11 @@ export class KernelSelectionProvider {
         cancelToken?: CancellationToken
     ): Promise<IKernelSpecQuickPickItem<KernelSpecConnectionMetadata | PythonKernelConnectionMetadata>[]> {
         const getSelections = async () => {
-            // For raw versus jupyter connections we need to use a different method for fetching installed kernelspecs
-            // There is a possible unknown case for if we have a guest jupyter notebook that has not yet connected
-            // in that case we don't use either method
             const installedKernelsPromise = new InstalledLocalKernelSelectionListProvider(
                 this.kernelFinder,
                 this.pathUtils,
-                this.kernelService
+                this.kernelService,
+                this.rawNotebookSupportedService
             ).getKernelSelections(resource, cancelToken);
             const interpretersPromise = this.extensionChecker.isPythonExtensionInstalled
                 ? new InterpreterKernelSelectionListProvider(this.interpreterSelector).getKernelSelections(

@@ -20,8 +20,7 @@ import { captureTelemetry, IEventNamePropertyMapping, sendTelemetryEvent } from 
 import { sendNotebookOrKernelLanguageTelemetry } from '../../common';
 import { Commands, Telemetry } from '../../constants';
 import { sendKernelListTelemetry } from '../../telemetry/kernelTelemetry';
-import { sendKernelTelemetryEvent } from '../../telemetry/telemetry';
-import { IKernelFinder, IpyKernelNotInstalledError } from '../../kernel-launcher/types';
+import { IKernelFinder } from '../../kernel-launcher/types';
 import { isPythonNotebook } from '../../notebook/helpers/helpers';
 import { getInterpreterInfoStoredInMetadata } from '../../notebookStorage/baseModel';
 import { PreferredRemoteKernelIdProvider } from '../../notebookStorage/preferredRemoteKernelIdProvider';
@@ -90,6 +89,7 @@ export class KernelSelector {
             cancelToken
         );
         const selection = await this.selectKernel<LiveKernelConnectionMetadata | KernelSpecConnectionMetadata>(
+            resource,
             stopWatch,
             Telemetry.SelectRemoteJupyterKernel,
             suggestions,
@@ -109,6 +109,7 @@ export class KernelSelector {
     ): Promise<KernelSpecConnectionMetadata | PythonKernelConnectionMetadata | undefined> {
         const suggestions = await this.selectionProvider.getKernelSelectionsForLocalSession(resource, cancelToken);
         const selection = await this.selectKernel<KernelSpecConnectionMetadata | PythonKernelConnectionMetadata>(
+            resource,
             stopWatch,
             Telemetry.SelectLocalJupyterKernel,
             suggestions,
@@ -463,6 +464,7 @@ export class KernelSelector {
     }
 
     private async selectKernel<T extends KernelConnectionMetadata>(
+        resource: Resource,
         stopWatch: StopWatch,
         telemetryEvent: Telemetry,
         suggestions: IKernelSpecQuickPickItem<T>[],

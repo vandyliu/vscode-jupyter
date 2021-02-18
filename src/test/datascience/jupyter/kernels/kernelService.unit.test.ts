@@ -21,11 +21,7 @@ import { KernelDependencyService } from '../../../../client/datascience/jupyter/
 import { KernelService } from '../../../../client/datascience/jupyter/kernels/kernelService';
 import { KernelFinder } from '../../../../client/datascience/kernel-launcher/kernelFinder';
 import { IKernelFinder } from '../../../../client/datascience/kernel-launcher/types';
-import {
-    IJupyterKernelSpec,
-    IJupyterSessionManager,
-    IJupyterSubCommandExecutionService
-} from '../../../../client/datascience/types';
+import { IJupyterSubCommandExecutionService } from '../../../../client/datascience/types';
 import { IEnvironmentActivationService } from '../../../../client/interpreter/activation/types';
 import { IInterpreterService } from '../../../../client/interpreter/contracts';
 import { PythonEnvironment } from '../../../../client/pythonEnvironments/info';
@@ -133,7 +129,7 @@ suite('DataScience - KernelService', () => {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             expectedKernelJsonContent.env = envVariables as any;
 
-            const installedKernel = await kernelService.searchForKernel(interpreter);
+            const installedKernel = await kernelService.searchForKernel(undefined, interpreter, undefined);
 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             assert.deepEqual(kernel, installedKernel as any);
@@ -156,9 +152,7 @@ suite('DataScience - KernelService', () => {
             when(activationHelper.getActivatedEnvironmentVariables(undefined, interpreter, true)).thenResolve(
                 envVariables
             );
-            findMatchingKernelSpecStub.resolves(kernel);
-
-            const installedKernel = await kernelService.searchForKernel(interpreter);
+            const installedKernel = await kernelService.searchForKernel(undefined, interpreter, undefined);
 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             assert.deepEqual(kernel, installedKernel as any);
