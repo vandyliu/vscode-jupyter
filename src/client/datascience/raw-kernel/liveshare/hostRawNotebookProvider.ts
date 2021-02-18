@@ -39,7 +39,7 @@ import { KernelConnectionMetadata } from '../../jupyter/kernels/types';
 import { HostJupyterNotebook } from '../../jupyter/liveshare/hostJupyterNotebook';
 import { LiveShareParticipantHost } from '../../jupyter/liveshare/liveShareParticipantMixin';
 import { IRoleBasedObject } from '../../jupyter/liveshare/roleBasedFactory';
-import { IKernelLauncher } from '../../kernel-launcher/types';
+import { IKernelLauncher, IpyKernelNotInstalledError } from '../../kernel-launcher/types';
 import { ProgressReporter } from '../../progress/progressReporter';
 import {
     INotebook,
@@ -51,6 +51,7 @@ import {
 import { calculateWorkingDirectory } from '../../utils';
 import { RawJupyterSession } from '../rawJupyterSession';
 import { RawNotebookProviderBase } from '../rawNotebookProvider';
+import { trackKernelResourceInformation } from '../../telemetry/telemetry';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -159,6 +160,7 @@ export class HostRawNotebookProvider
 
         traceInfo(`Getting preferred kernel for ${identity.toString()}`);
         try {
+            const kernelConnectionProvided = !!kernelConnection;
             if (
                 kernelConnection &&
                 isPythonKernelConnection(kernelConnection) &&
@@ -224,12 +226,16 @@ export class HostRawNotebookProvider
             ) {
                 notebookPromise.reject('Failed to find a kernelspec to use for ipykernel launch');
             } else {
+                // If a kernel connection was not provided, then we set it up here.
+                if (!kernelConnectionProvided) {
+                    trackKernelResourceInformation(resource, { kernelConnection: kernelConnectionMetadata });
+                }
                 traceInfo(
                     `Connecting to raw session for ${identity.toString()} with connection ${JSON.stringify(
                         kernelConnectionMetadata
                     )}`
                 );
-                await rawSession.connect(kernelConnectionMetadata, launchTimeout, cancelToken, disableUI);
+                await rawSession.connect(resource, kernelConnectionMetadata, launchTimeout, cancelToken, disableUI);
 
                 // Get the execution info for our notebook
                 const info = await this.getExecutionInfo(kernelConnectionMetadata);

@@ -4,7 +4,7 @@
 
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
-import { ColumnType, MaxStringCompare } from '../../client/datascience/data-viewing/types';
+import { ColumnType, IGetSliceRequest, MaxStringCompare } from '../../client/datascience/data-viewing/types';
 import { KeyCodes } from '../react-common/constants';
 import { measureText } from '../react-common/textMeasure';
 import './globalJQueryImports';
@@ -36,6 +36,8 @@ import 'slickgrid/slick.grid.css';
 // Make sure our css comes after the slick grid css. We override some of its styles.
 // eslint-disable-next-line import/order
 import './reactSlickGrid.css';
+import { SliceControl } from './sliceControl';
+import { generateDisplayValue } from './cellFormatter';
 /*
 WARNING: Do not change the order of these imports.
 Slick grid MUST be imported after we load jQuery and other stuff from `./globalJQueryImports`
@@ -49,14 +51,24 @@ export interface ISlickGridAdd {
     newRows: ISlickRow[];
 }
 
+export interface ISlickGridSlice {
+    columns: Slick.Column<Slick.SlickData>[];
+}
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export interface ISlickGridProps {
     idProperty: string;
     columns: Slick.Column<ISlickRow>[];
     rowsAdded: Slick.Event<ISlickGridAdd>;
+    resetGridEvent: Slick.Event<ISlickGridSlice>;
+    columnsUpdated: Slick.Event<Slick.Column<Slick.SlickData>[]>;
     filterRowsText: string;
     filterRowsTooltip: string;
     forceHeight?: number;
+    dataDimensionality: number;
+    originalVariableShape: number[] | undefined;
+    isSliceDataEnabled: boolean; // Feature flag. This should eventually be removed
+    handleSliceRequest(args: IGetSliceRequest): void;
 }
 
 interface ISlickGridState {
@@ -67,11 +79,14 @@ interface ISlickGridState {
 
 class ColumnFilter {
     private matchFunc: (v: any) => boolean;
-    private lessThanRegEx = /^\s*<\s*(\d+.*)/;
-    private lessThanEqualRegEx = /^\s*<=\s*(\d+.*).*/;
-    private greaterThanRegEx = /^\s*>\s*(\d+.*).*/;
-    private greaterThanEqualRegEx = /^\s*>=\s*(\d+.*).*/;
-    private equalThanRegEx = /^\s*=\s*(\d+.*).*/;
+    private nanRegEx = /^\s*nan.*/i;
+    private infRegEx = /^\s*inf.*/i;
+    private negInfRegEx = /^\s*-inf.*/i;
+    private lessThanRegEx = /^\s*<\s*((?<Number>\d+.*)|(?<NaN>nan)|(?<Inf>inf)|(?<NegInf>-inf))/i;
+    private lessThanEqualRegEx = /^\s*<=\s*((?<Number>\d+.*)|(?<NaN>nan)|(?<Inf>inf)|(?<NegInf>-inf)).*/i;
+    private greaterThanRegEx = /^\s*>\s*((?<Number>\d+.*)|(?<NaN>nan)|(?<Inf>inf)|(?<NegInf>-inf)).*/i;
+    private greaterThanEqualRegEx = /^\s*>=\s*((?<Number>\d+.*)|(?<NaN>nan)|(?<Inf>inf)|(?<NegInf>-inf)).*/i;
+    private equalToRegEx = /^\s*(?:=|==)\s*((?<Number>\d+.*)|(?<NaN>nan)|(?<Inf>inf)|(?<NegInf>-inf)).*/i;
 
     constructor(text: string, column: Slick.Column<Slick.SlickData>) {
         if (text && text.length > 0) {
@@ -97,28 +112,42 @@ class ColumnFilter {
 
     private extractDigits(text: string, regex: RegExp): number {
         const match = regex.exec(text);
-        if (match && match.length > 1) {
-            return parseFloat(match[1]);
+        if (match && match.groups) {
+            if (match.groups.Number) {
+                return parseFloat(match.groups.Number);
+            } else if (match.groups.Inf) {
+                return Infinity;
+            } else if (match.groups.NegInf) {
+                return -Infinity;
+            } else if (match.groups.NaN) {
+                return NaN;
+            }
         }
         return 0;
     }
 
     private generateNumericOperation(text: string): (v: any) => boolean {
-        if (this.lessThanRegEx.test(text)) {
+        if (this.nanRegEx.test(text)) {
+            return (v: any) => v !== undefined && Number.isNaN(v);
+        } else if (this.infRegEx.test(text)) {
+            return (v: any) => v !== undefined && v === Infinity;
+        } else if (this.negInfRegEx.test(text)) {
+            return (v: any) => v !== undefined && v === -Infinity;
+        } else if (this.lessThanRegEx.test(text)) {
             const n1 = this.extractDigits(text, this.lessThanRegEx);
             return (v: any) => v !== undefined && v < n1;
         } else if (this.lessThanEqualRegEx.test(text)) {
             const n2 = this.extractDigits(text, this.lessThanEqualRegEx);
-            return (v: any) => v !== undefined && v <= n2;
+            return (v: any) => v !== undefined && (v <= n2 || (Number.isNaN(v) && Number.isNaN(n2)));
         } else if (this.greaterThanRegEx.test(text)) {
             const n3 = this.extractDigits(text, this.greaterThanRegEx);
             return (v: any) => v !== undefined && v > n3;
         } else if (this.greaterThanEqualRegEx.test(text)) {
             const n4 = this.extractDigits(text, this.greaterThanEqualRegEx);
-            return (v: any) => v !== undefined && v >= n4;
-        } else if (this.equalThanRegEx.test(text)) {
-            const n5 = this.extractDigits(text, this.equalThanRegEx);
-            return (v: any) => v !== undefined && v === n5;
+            return (v: any) => v !== undefined && (v >= n4 || (Number.isNaN(v) && Number.isNaN(n4)));
+        } else if (this.equalToRegEx.test(text)) {
+            const n5 = this.extractDigits(text, this.equalToRegEx);
+            return (v: any) => v !== undefined && (v === n5 || (Number.isNaN(v) && Number.isNaN(n5)));
         } else {
             const n6 = parseFloat(text);
             return (v: any) => v !== undefined && v === n6;
@@ -140,6 +169,8 @@ export class ReactSlickGrid extends React.Component<ISlickGridProps, ISlickGridS
         this.containerRef = React.createRef<HTMLDivElement>();
         this.measureRef = React.createRef<HTMLDivElement>();
         this.props.rowsAdded.subscribe(this.addedRows);
+        this.props.resetGridEvent.subscribe(this.resetGrid);
+        this.props.columnsUpdated.subscribe(this.updateColumns);
     }
 
     // eslint-disable-next-line
@@ -170,14 +201,7 @@ export class ReactSlickGrid extends React.Component<ISlickGridProps, ISlickGridS
                 rowHeight: this.getAppropiateRowHeight(fontSize)
             };
 
-            // Transform columns so they are sortable and stylable
-            const columns = this.props.columns.map((c) => {
-                c.sortable = true;
-                c.editor = readonlyCellEditor;
-                c.headerCssClass = 'react-grid-header-cell';
-                c.cssClass = 'react-grid-cell';
-                return c;
-            });
+            const columns = this.styleColumns(this.props.columns);
 
             // Create the grid
             const grid = new Slick.Grid<ISlickRow>(this.containerRef.current, this.dataView, columns, options);
@@ -260,16 +284,16 @@ export class ReactSlickGrid extends React.Component<ISlickGridProps, ISlickGridS
         }
     };
 
-    public componentDidUpdate = (_prevProps: ISlickGridProps, prevState: ISlickGridState) => {
+    public componentDidUpdate = (_prevProps: ISlickGridProps) => {
         if (this.state.showingFilters && this.state.grid) {
             this.state.grid.setHeaderRowVisibility(true);
         } else if (this.state.showingFilters === false && this.state.grid) {
             this.state.grid.setHeaderRowVisibility(false);
         }
 
-        // If this is our first time setting the grid, we need to dynanically modify the styles
-        // that the slickGrid generates for the rows. It's eliminating some of the height
-        if (!prevState.grid && this.state.grid && this.containerRef.current) {
+        // Dynamically modify the styles that the slickGrid generates for the rows.
+        // It's eliminating some of the height
+        if (this.state.grid && this.containerRef.current) {
             this.updateCssStyles();
         }
     };
@@ -284,19 +308,35 @@ export class ReactSlickGrid extends React.Component<ISlickGridProps, ISlickGridS
 
         return (
             <div className="outer-container">
-                <button
-                    className="react-grid-filter-button"
-                    tabIndex={0}
-                    title={this.props.filterRowsTooltip}
-                    onClick={this.clickFilterButton}
-                >
-                    <span>{this.props.filterRowsText}</span>
-                </button>
+                <div style={{ display: 'flex', justifyContent: 'start', flexDirection: 'row' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-around' }}>
+                        <button
+                            className="react-grid-filter-button"
+                            tabIndex={0}
+                            title={this.props.filterRowsTooltip}
+                            onClick={this.clickFilterButton}
+                        >
+                            <span>{this.props.filterRowsText}</span>
+                        </button>
+                        {this.renderTemporarySliceIndicator()}
+                    </div>
+                </div>
                 <div className="react-grid-container" style={style} ref={this.containerRef}></div>
                 <div className="react-grid-measure" ref={this.measureRef} />
             </div>
         );
     }
+
+    public renderTemporarySliceIndicator = () => {
+        if (this.props.isSliceDataEnabled && this.props.originalVariableShape) {
+            return (
+                <SliceControl
+                    originalVariableShape={this.props.originalVariableShape}
+                    handleSliceRequest={this.props.handleSliceRequest}
+                />
+            );
+        }
+    };
 
     // public for testing
     public sort = (_e: Slick.EventData, args: Slick.OnSortEventArgs<Slick.SlickData>) => {
@@ -313,6 +353,17 @@ export class ReactSlickGrid extends React.Component<ISlickGridProps, ISlickGridS
             this.dataView.refresh();
         }
     };
+
+    private styleColumns(columns: Slick.Column<ISlickRow>[]) {
+        // Transform columns so they are sortable and stylable
+        return columns.map((c) => {
+            c.sortable = true;
+            c.editor = readonlyCellEditor;
+            c.headerCssClass = 'react-grid-header-cell';
+            c.cssClass = 'react-grid-cell';
+            return c;
+        });
+    }
 
     // These adjustments for the row height come from trial and error, by changing the font size in VS code,
     // opening a new Data Viewer, and making sure the data is visible
@@ -458,6 +509,27 @@ export class ReactSlickGrid extends React.Component<ISlickGridProps, ISlickGridS
         return null;
     }
 
+    private resetGrid = (_e: Slick.EventData, data: ISlickGridSlice) => {
+        this.dataView.setItems([]);
+        const styledColumns = this.styleColumns(data.columns);
+        this.setColumns(styledColumns);
+        this.autoResizeColumns();
+    };
+
+    private updateColumns = (_e: Slick.EventData, newColumns: Slick.Column<Slick.SlickData>[]) => {
+        this.setColumns(newColumns);
+        this.state.grid?.render(); // We might be able to skip this rerender?
+    };
+
+    private setColumns = (newColumns: Slick.Column<Slick.SlickData>[]) => {
+        // HACK: SlickGrid header row does not rerender if its visibility is false when columns
+        // are updated, and this causes the header to simply not show up when clicking the
+        // filter button after we update the grid column headers on receiving a slice response.
+        // The solution is to force the header row to become visible just before sending our slice request.
+        this.state.grid?.setHeaderRowVisibility(true);
+        this.state.grid?.setColumns(newColumns);
+    };
+
     private addedRows = (_e: Slick.EventData, data: ISlickGridAdd) => {
         // Add all of these new rows into our data.
         this.dataView.beginUpdate();
@@ -561,9 +633,7 @@ function readonlyCellEditor(this: any, args: any) {
     };
 
     this.loadValue = function loadValue(item: any) {
-        // In the original SlickGrid TextEditor this is || instead of ??
-        // which causes problems when the value in the item is the number 0
-        defaultValue = item[args.column.field] ?? '';
+        defaultValue = generateDisplayValue(item[args.column.field]);
         $input.val(defaultValue);
         $input[0].defaultValue = defaultValue;
         $input.select();

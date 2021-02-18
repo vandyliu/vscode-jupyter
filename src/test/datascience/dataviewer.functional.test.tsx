@@ -129,7 +129,8 @@ suite('DataScience DataViewer tests', () => {
     async function injectCode(code: string): Promise<void> {
         const notebookProvider = ioc.get<INotebookProvider>(INotebookProvider);
         notebook = await notebookProvider.getOrCreateNotebook({
-            identity: getDefaultInteractiveIdentity()
+            identity: getDefaultInteractiveIdentity(),
+            resource: undefined
         });
         if (notebook) {
             const cells = await notebook.execute(code, Identifiers.EmptyFileName, 0, uuid());
@@ -311,47 +312,97 @@ suite('DataScience DataViewer tests', () => {
     });
 
     runMountedTest('Sorting', async (wrapper) => {
-        await injectCode('import numpy as np\r\nx = np.array([0, 1, 2, 3])');
+        await injectCode('import numpy as np\r\nx = np.array([0, 1, 2, 3, np.inf, -np.inf, np.nan])');
         const gotAllRows = getCompletedPromise(wrapper);
         const dv = await createJupyterVariableDataViewer('x', 'ndarray');
         assert.ok(dv, 'DataViewer not created');
         await gotAllRows;
 
-        verifyRows(wrapper.wrapper, [0, 0, 1, 1, 2, 2, 3, 3]);
+        verifyRows(wrapper.wrapper, [0, 0, 1, 1, 2, 2, 3, 3, 4, 'inf', 5, '-inf', 6, 'nan']);
         sortRows(wrapper.wrapper, '0', false);
-        verifyRows(wrapper.wrapper, [3, 3, 2, 2, 1, 1, 0, 0]);
+        verifyRows(wrapper.wrapper, [6, 'nan', 4, 'inf', 3, 3, 2, 2, 1, 1, 0, 0, 5, '-inf']);
+        sortRows(wrapper.wrapper, '0', true);
+        verifyRows(wrapper.wrapper, [5, '-inf', 0, 0, 1, 1, 2, 2, 3, 3, 4, 'inf', 6, 'nan']);
     });
 
     runMountedTest('Filter', async (wrapper) => {
-        await injectCode('import numpy as np\r\nx = np.array([0, 1, 2, 3])');
+        await injectCode('import numpy as np\r\nx = np.array([0, 1, 2, 3, np.inf, -np.inf, np.nan])');
         const gotAllRows = getCompletedPromise(wrapper);
         const dv = await createJupyterVariableDataViewer('x', 'ndarray');
         assert.ok(dv, 'DataViewer not created');
         await gotAllRows;
+        verifyRows(wrapper.wrapper, [0, 0, 1, 1, 2, 2, 3, 3, 4, 'inf', 5, '-inf', 6, 'nan']);
 
-        verifyRows(wrapper.wrapper, [0, 0, 1, 1, 2, 2, 3, 3]);
-        await filterRows(wrapper.wrapper, '0', '> 1');
-        verifyRows(wrapper.wrapper, [2, 2, 3, 3]);
-        await filterRows(wrapper.wrapper, '0', '0');
-        verifyRows(wrapper.wrapper, [0, 0]);
+        const filtersAndExpectedResults = {
+            '> 1': [2, 2, 3, 3, 4, 'inf'],
+            '0': [0, 0],
+            // Search for inf, -inf, nan
+            inf: [4, 'inf'],
+            Inf: [4, 'inf'],
+            '-inf': [5, '-inf'],
+            '-INF': [5, '-inf'],
+            nan: [6, 'nan'],
+            NaN: [6, 'nan'],
+            // inf comparison
+            '> inf': [],
+            '>= inf': [4, 'inf'],
+            '= inf': [4, 'inf'],
+            '== inf': [4, 'inf'],
+            '<= inf': [0, 0, 1, 1, 2, 2, 3, 3, 4, 'inf', 5, '-inf'],
+            '< inf': [0, 0, 1, 1, 2, 2, 3, 3, 5, '-inf'],
+            // -inf comparison
+            '> -inf': [0, 0, 1, 1, 2, 2, 3, 3, 4, 'inf'],
+            '>= -inf': [0, 0, 1, 1, 2, 2, 3, 3, 4, 'inf', 5, '-inf'],
+            '= -inf': [5, '-inf'],
+            '== -inf': [5, '-inf'],
+            '<= -inf': [5, '-inf'],
+            '< -inf': [],
+            // nan comparison
+            '= nan': [6, 'nan'],
+            '== nan': [6, 'nan'],
+            '>= nan': [6, 'nan'],
+            '<= nan': [6, 'nan'],
+            '> nan': [],
+            '< nan': []
+        };
+
+        for (const [filter, expectedResult] of Object.entries(filtersAndExpectedResults)) {
+            await filterRows(wrapper.wrapper, '0', filter);
+            verifyRows(wrapper.wrapper, expectedResult);
+        }
     });
 
-    runMountedTest('2D PyTorch tensors', async (wrapper) => {
-        await injectCode('import torch\r\nfoo = torch.LongTensor([0, 1])');
+    runMountedTest('Filter 2D PyTorch tensors', async (wrapper) => {
+        await injectCode('import torch\r\nfoo = torch.tensor([0, 1, 2, 3, 4, 5])');
         const gotAllRows = getCompletedPromise(wrapper);
         const dv = await createJupyterVariableDataViewer('foo', 'Tensor');
         assert.ok(dv, 'DataViewer not created');
         await gotAllRows;
-        verifyRows(wrapper.wrapper, [0, 0, 1, 1]);
+
+        await filterRows(wrapper.wrapper, '0', '> 0');
+        verifyRows(wrapper.wrapper, [1, 1, 2, 2, 3, 3, 4, 4, 5, 5]);
+    });
+
+    runMountedTest('2D PyTorch tensors', async (wrapper) => {
+        await injectCode(
+            "import torch\r\nimport numpy as np\r\nfoo = torch.tensor([0, 1, np.inf, float('-inf'), np.nan])"
+        );
+        const gotAllRows = getCompletedPromise(wrapper);
+        const dv = await createJupyterVariableDataViewer('foo', 'Tensor');
+        assert.ok(dv, 'DataViewer not created');
+        await gotAllRows;
+        verifyRows(wrapper.wrapper, [0, 0, 1, 1, 2, 'inf', 3, '-inf', 4, 'nan']);
     });
 
     runMountedTest('2D TensorFlow tensors', async (wrapper) => {
-        await injectCode('import tensorflow as tf\r\nbar = tf.constant([0, 1])');
+        await injectCode(
+            "import tensorflow as tf\r\nimport numpy as np\r\nbar = tf.constant([0, 1, np.inf, float('-inf'), np.nan])"
+        );
         const gotAllRows = getCompletedPromise(wrapper);
         const dv = await createJupyterVariableDataViewer('bar', 'EagerTensor');
         assert.ok(dv, 'DataViewer not created');
         await gotAllRows;
-        verifyRows(wrapper.wrapper, [0, 0, 1, 1]);
+        verifyRows(wrapper.wrapper, [0, 0, 1, 1, 2, 'inf', 3, '-inf', 4, 'nan']);
     });
 
     runMountedTest('3D PyTorch tensors', async (wrapper) => {
@@ -409,13 +460,22 @@ suite('DataScience DataViewer tests', () => {
         ]);
     });
 
-    runMountedTest('Ragged 2D numpy array', async (wrapper) => {
-        await injectCode('import numpy as np\r\nfoo = np.array([[1, 2, 3], [4, 5]])');
+    runMountedTest('Ragged 1D numpy array', async (wrapper) => {
+        await injectCode("import numpy as np\r\nfoo = np.array(['hello', 42, ['hi', 'hey']])");
         const gotAllRows = getCompletedPromise(wrapper);
         const dv = await createJupyterVariableDataViewer('foo', 'ndarray');
         assert.ok(dv, 'DataViewer not created');
         await gotAllRows;
-        verifyRows(wrapper.wrapper, [0, 1, 2, 3, 1, 4, 5]);
+        verifyRows(wrapper.wrapper, [0, 'hello', 1, 42, 2, "['hi', 'hey']"]);
+    });
+
+    runMountedTest('Ragged 2D numpy array', async (wrapper) => {
+        await injectCode("import numpy as np\r\nfoo = np.array([[1, 2, 3, float('inf')], [4, np.nan, 5]])");
+        const gotAllRows = getCompletedPromise(wrapper);
+        const dv = await createJupyterVariableDataViewer('foo', 'ndarray');
+        assert.ok(dv, 'DataViewer not created');
+        await gotAllRows;
+        verifyRows(wrapper.wrapper, [0, '[1, 2, 3, inf]', 1, '[4, nan, 5]']);
     });
 
     runMountedTest('Ragged 3D numpy array', async (wrapper) => {
@@ -425,6 +485,21 @@ suite('DataScience DataViewer tests', () => {
         const dv = await createJupyterVariableDataViewer('foo', 'ndarray');
         assert.ok(dv, 'DataViewer not created');
         await gotAllRows;
-        verifyRows(wrapper.wrapper, [0, `[1, 2, 3]`, `[4, 5]`, 1, `[6, 7, 8, 9]`, '']);
+        verifyRows(wrapper.wrapper, [0, `[[1, 2, 3], [4, 5]]`, 1, '[[6, 7, 8, 9]]']);
     });
+
+    // https://github.com/microsoft/vscode-jupyter/issues/4706
+    // Disabled for now. Root cause is that pd.replace isn't recursive over objects in DataFrames,
+    // so our current inf/nan handling does not work for DataFrames whose cells are Series, ndarray, or list
+    // runMountedTest('Inf/NaN in DataFrame', async (wrapper) => {
+    //     await injectCode(
+    //         'import pandas as pd\r\nimport numpy as np\r\ndf = pd.DataFrame([], columns=["foo", "bar", "baz"])\r\ndf = df.append({"foo": [0, 1, np.inf], "bar": [-np.inf, 0, 1], "baz": [1, np.nan, 0]}, ignore_index=True)'
+    //     );
+    //     const gotAllRows = getCompletedPromise(wrapper);
+    //     const dv = await createJupyterVariableDataViewer('df', 'DataFrame');
+    //     assert.ok(dv, 'DataViewer not created');
+    //     await gotAllRows;
+
+    //     verifyRows(wrapper.wrapper, [0, '[0,1,inf]', '[-inf,0,1]', '[1,nan,0]']);
+    // });
 });

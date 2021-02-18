@@ -18,8 +18,10 @@ import { IInterpreterService } from '../../../interpreter/contracts';
 import { PythonEnvironment } from '../../../pythonEnvironments/info';
 import { captureTelemetry, IEventNamePropertyMapping, sendTelemetryEvent } from '../../../telemetry';
 import { sendNotebookOrKernelLanguageTelemetry } from '../../common';
-import { Commands, Settings, Telemetry } from '../../constants';
-import { IKernelFinder } from '../../kernel-launcher/types';
+import { Commands, Telemetry } from '../../constants';
+import { sendKernelListTelemetry } from '../../telemetry/kernelTelemetry';
+import { sendKernelTelemetryEvent } from '../../telemetry/telemetry';
+import { IKernelFinder, IpyKernelNotInstalledError } from '../../kernel-launcher/types';
 import { isPythonNotebook } from '../../notebook/helpers/helpers';
 import { getInterpreterInfoStoredInMetadata } from '../../notebookStorage/baseModel';
 import { PreferredRemoteKernelIdProvider } from '../../notebookStorage/preferredRemoteKernelIdProvider';
@@ -32,7 +34,12 @@ import {
     IJupyterSessionManagerFactory,
     INotebookProviderConnection
 } from '../../types';
-import { createDefaultKernelSpec, getDisplayNameOrNameOfKernelConnection, isPythonKernelConnection } from './helpers';
+import {
+    createDefaultKernelSpec,
+    getDisplayNameOrNameOfKernelConnection,
+    isLocalLaunch,
+    isPythonKernelConnection
+} from './helpers';
 import { KernelSelectionProvider } from './kernelSelections';
 import { KernelService } from './kernelService';
 import {
@@ -43,6 +50,7 @@ import {
     LiveKernelConnectionMetadata,
     PythonKernelConnectionMetadata
 } from './types';
+import { InterpreterPackages } from '../../telemetry/interpreterPackages';
 
 /**
  * All KernelConnections returned (as return values of methods) by the KernelSelector can be used in a number of ways.
@@ -62,7 +70,8 @@ export class KernelSelector {
         @inject(IConfigurationService) private configService: IConfigurationService,
         @inject(IPythonExtensionChecker) private readonly extensionChecker: IPythonExtensionChecker,
         @inject(PreferredRemoteKernelIdProvider)
-        private readonly preferredRemoteKernelIdProvider: PreferredRemoteKernelIdProvider
+        private readonly preferredRemoteKernelIdProvider: PreferredRemoteKernelIdProvider,
+        @inject(InterpreterPackages) private readonly interpreterPackages: InterpreterPackages
     ) {}
 
     /**
@@ -71,13 +80,13 @@ export class KernelSelector {
     public async selectRemoteKernel(
         resource: Resource,
         stopWatch: StopWatch,
-        session: IJupyterSessionManager,
+        sessionManagerCreator: () => Promise<IJupyterSessionManager>,
         cancelToken?: CancellationToken,
         currentKernelDisplayName?: string
     ): Promise<LiveKernelConnectionMetadata | KernelSpecConnectionMetadata | undefined> {
         const suggestions = await this.selectionProvider.getKernelSelectionsForRemoteSession(
             resource,
-            session,
+            sessionManagerCreator,
             cancelToken
         );
         const selection = await this.selectKernel<LiveKernelConnectionMetadata | KernelSpecConnectionMetadata>(
@@ -106,12 +115,20 @@ export class KernelSelector {
             cancelToken,
             currentKernelDisplayName
         );
+        if (selection?.interpreter) {
+            this.interpreterPackages.trackPackages(selection.interpreter);
+        }
         return cloneDeep(selection);
     }
     /**
      * Gets a kernel that needs to be used with a local session.
      * (will attempt to find the best matching kernel, or prompt user to use current interpreter or select one).
+     *
+     * @param {boolean} [ignoreTrackingKernelInformation]
+     * As a side effect these method tracks the kernel information for telemetry, we should ensure that tracking is disabled for Native Notebooks. Native Notebooks knows exactly what the current kernel information is, webviews/interactive is not the same.
+     * I.e. whenever these methods are called by webviews/interactive assume the return value is the active kernel.
      */
+    @traceDecorators.info('Get preferred local kernel connection')
     @reportAction(ReportableAction.KernelsGetKernelForLocalConnection)
     @captureTelemetry(Telemetry.GetPreferredKernelPerf)
     public async getPreferredKernelForLocalConnection(
@@ -161,15 +178,25 @@ export class KernelSelector {
             }
             return itemToReturn;
         }
+        if (selection?.interpreter) {
+            this.interpreterPackages.trackPackages(selection.interpreter);
+        }
+
         return selection;
     }
 
     /**
      * Gets a kernel that needs to be used with a remote session.
      * (will attempt to find the best matching kernel, or prompt user to use current interpreter or select one).
+     *
+     * @param {boolean} [ignoreTrackingKernelInformation]
+     * As a side effect these method tracks the kernel information for telemetry, we should ensure that tracking is disabled for Native Notebooks. Native Notebooks knows exactly what the current kernel information is, webviews/interactive is not the same.
+     * I.e. whenever these methods are called by webviews/interactive assume the return value is the active kernel.
      */
     // eslint-disable-next-line complexity
+    @traceDecorators.info('Get preferred remote kernel connection')
     @reportAction(ReportableAction.KernelsGetKernelForRemoteConnection)
+    @captureTelemetry(Telemetry.GetPreferredKernelPerf)
     public async getPreferredKernelForRemoteConnection(
         resource: Resource,
         sessionManager?: IJupyterSessionManager,
@@ -212,6 +239,8 @@ export class KernelSelector {
                     `Got Preferred kernel for ${resource?.toString()} & it is ${preferredKernelId}, but without a matching session`
                 );
             }
+        } else {
+            traceInfo(`No preferred kernel for remote notebook connection ${resource?.toString()}`);
         }
 
         // No running session, try matching based on interpreter
@@ -261,22 +290,25 @@ export class KernelSelector {
             }
         }
 
+        let kernelConnection: KernelConnectionMetadata;
         if (bestMatch) {
-            return cloneDeep({
+            kernelConnection = cloneDeep({
                 kernelSpec: bestMatch,
                 interpreter: interpreter,
                 kind: 'startUsingKernelSpec'
             });
         } else {
+            traceError('No preferred kernel, using the default kernel');
             // Unlikely scenario, we expect there to be at least one kernel spec.
             // Either way, return so that we can start using the default kernel.
-            return cloneDeep({
+            kernelConnection = cloneDeep({
                 interpreter: interpreter,
                 kind: 'startUsingDefaultKernel'
             });
         }
-    }
 
+        return kernelConnection;
+    }
     public async askForLocalKernel(
         resource: Resource,
         kernelConnection?: KernelConnectionMetadata
@@ -300,9 +332,7 @@ export class KernelSelector {
         currentKernelDisplayName: string | undefined
     ): Promise<KernelConnectionMetadata | undefined> {
         let kernelConnection: KernelConnectionMetadata | undefined;
-        const settings = this.configService.getSettings(resource);
-        const isLocalConnection =
-            connection?.localLaunch ?? settings.jupyterServerType.toLowerCase() === Settings.JupyterServerLocalLaunch;
+        const isLocalConnection = connection?.localLaunch ?? isLocalLaunch(this.configService);
 
         if (isLocalConnection) {
             kernelConnection = await this.selectLocalJupyterKernel(resource, currentKernelDisplayName);
@@ -325,8 +355,8 @@ export class KernelSelector {
         currentKernelDisplayName?: string
     ): Promise<KernelConnectionMetadata | undefined> {
         const stopWatch = new StopWatch();
-        const session = await this.jupyterSessionManagerFactory.create(connInfo);
-        return this.selectRemoteKernel(resource, stopWatch, session, undefined, currentKernelDisplayName);
+        const sessionManagerCreator = () => this.jupyterSessionManagerFactory.create(connInfo);
+        return this.selectRemoteKernel(resource, stopWatch, sessionManagerCreator, undefined, currentKernelDisplayName);
     }
 
     private async findInterpreterStoredInNotebookMetadata(
@@ -342,6 +372,10 @@ export class KernelSelector {
     }
     /**
      * Get our kernelspec and interpreter for a local raw connection
+     *
+     * @param {boolean} [ignoreTrackingKernelInformation]
+     * As a side effect these method tracks the kernel information for telemetry, we should ensure that tracking is disabled for Native Notebooks. Native Notebooks knows exactly what the current kernel information is, webviews/interactive is not the same.
+     * I.e. whenever these methods are called by webviews/interactive assume the return value is the active kernel.
      */
     @traceDecorators.verbose('Find kernel spec')
     private async getKernelForLocalConnection(
@@ -356,15 +390,21 @@ export class KernelSelector {
             notebookMetadata
         );
         if (interpreterStoredInKernelSpec) {
-            const connectionInfo: PythonKernelConnectionMetadata = {
+            const kernelConnection: PythonKernelConnectionMetadata = {
                 kind: 'startUsingPythonInterpreter',
                 interpreter: interpreterStoredInKernelSpec
             };
-            return connectionInfo;
+            return kernelConnection;
         }
 
         // First use our kernel finder to locate a kernelspec on disk
-        const kernelSpec = await this.kernelFinder.findKernelSpec(resource, notebookMetadata, cancelToken);
+        const hasKernelMetadataForPythonNb =
+            isPythonNotebook(notebookMetadata) && notebookMetadata?.kernelspec ? true : false;
+        // Don't look for kernel spec for python notebooks if we don't have the kernel metadata.
+        const kernelSpec =
+            hasKernelMetadataForPythonNb || !isPythonNotebook(notebookMetadata)
+                ? await this.kernelFinder.findKernelSpec(resource, notebookMetadata, cancelToken)
+                : undefined;
         traceInfoIf(
             !!process.env.VSC_JUPYTER_FORCE_LOGGING,
             `Kernel spec found ${JSON.stringify(kernelSpec)}, metadata ${JSON.stringify(notebookMetadata || '')}`
@@ -386,12 +426,12 @@ export class KernelSelector {
                     ? await this.kernelService.findMatchingInterpreter(kernelSpec, cancelToken)
                     : undefined;
 
-            const connectionInfo: KernelSpecConnectionMetadata = {
+            const kernelConnection: KernelSpecConnectionMetadata = {
                 kind: 'startUsingKernelSpec',
                 kernelSpec,
                 interpreter
             };
-            return connectionInfo;
+            return kernelConnection;
         } else {
             // No kernel specs, list them all and pick the first one
             const kernelSpecs = await this.kernelFinder.listKernelSpecs(resource);
@@ -401,13 +441,23 @@ export class KernelSelector {
             if (isPythonNotebook(notebookMetadata) || (resource?.fsPath && resource.fsPath.endsWith('.py'))) {
                 const firstPython = kernelSpecs.find((k) => k.language === 'python');
                 if (firstPython) {
-                    return { kind: 'startUsingKernelSpec', kernelSpec: firstPython, interpreter: undefined };
+                    const kernelConnection: KernelSpecConnectionMetadata = {
+                        kind: 'startUsingKernelSpec',
+                        kernelSpec: firstPython,
+                        interpreter: undefined
+                    };
+                    return kernelConnection;
                 }
             }
 
             // If that didn't work, just pick the first one
             if (kernelSpecs.length > 0) {
-                return { kind: 'startUsingKernelSpec', kernelSpec: kernelSpecs[0], interpreter: undefined };
+                const kernelConnection: KernelSpecConnectionMetadata = {
+                    kind: 'startUsingKernelSpec',
+                    kernelSpec: kernelSpecs[0],
+                    interpreter: undefined
+                };
+                return kernelConnection;
             }
         }
     }
@@ -423,6 +473,7 @@ export class KernelSelector {
             localize.DataScience.selectKernel() +
             (currentKernelDisplayName ? ` (current: ${currentKernelDisplayName})` : '');
         sendTelemetryEvent(telemetryEvent, stopWatch.elapsedTime);
+        sendKernelListTelemetry(resource, suggestions, stopWatch);
         const selection = await this.applicationShell.showQuickPick(suggestions, { placeHolder }, cancelToken);
         if (!selection?.selection) {
             return;

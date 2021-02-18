@@ -3,7 +3,6 @@
 
 'use strict';
 
-import type { nbformat } from '@jupyterlab/coreutils';
 import type { Kernel } from '@jupyterlab/services';
 import { inject, injectable } from 'inversify';
 import * as path from 'path';
@@ -22,25 +21,13 @@ import { IInterpreterService } from '../../../interpreter/contracts';
 import { PythonEnvironment } from '../../../pythonEnvironments/info';
 import { sendTelemetryEvent } from '../../../telemetry';
 import { Telemetry } from '../../constants';
+import { IKernelFinder } from '../../kernel-launcher/types';
 import { reportAction } from '../../progress/decorator';
 import { ReportableAction } from '../../progress/types';
 import { IJupyterKernelSpec, IJupyterSessionManager, IJupyterSubCommandExecutionService } from '../../types';
 import { cleanEnvironment, createDefaultKernelSpec, detectDefaultKernelName } from './helpers';
 import { JupyterKernelSpec } from './jupyterKernelSpec';
 import { LiveKernelModel } from './types';
-
-/**
- * Helper to ensure we can differentiate between two types in union types, keeping typing information.
- * (basically avoiding the need to case using `as`).
- * We cannot use `xx in` as jupyter uses `JSONObject` which is too broad and captures anything and everything.
- *
- * @param {(nbformat.IKernelspecMetadata | PythonEnvironment)} item
- * @returns {item is PythonEnvironment}
- */
-function isInterpreter(item: nbformat.IKernelspecMetadata | PythonEnvironment): item is PythonEnvironment {
-    // Interpreters will not have a `display_name` property, but have `path` and `type` properties.
-    return !!(item as PythonEnvironment).path && !(item as nbformat.IKernelspecMetadata).display_name;
-}
 
 /**
  * Responsible for kernel management and the like.
@@ -56,56 +43,9 @@ export class KernelService {
         @inject(IInterpreterService) private readonly interpreterService: IInterpreterService,
         @inject(IFileSystem) private readonly fs: IFileSystem,
         @inject(IEnvironmentActivationService) private readonly activationHelper: IEnvironmentActivationService,
-        @inject(IPythonExtensionChecker) private readonly extensionChecker: IPythonExtensionChecker
+        @inject(IPythonExtensionChecker) private readonly extensionChecker: IPythonExtensionChecker,
+        @inject(IKernelFinder) private readonly kernelFinder: IKernelFinder
     ) {}
-    /**
-     * Finds a kernel spec from a given session or jupyter process that matches a given spec.
-     *
-     * @param {nbformat.IKernelspecMetadata} kernelSpec The kernelspec (criteria) to be used when searching for a kernel.
-     * @param {IJupyterSessionManager} [sessionManager] If not provided search against the jupyter process.
-     * @param {CancellationToken} [cancelToken]
-     * @returns {(Promise<IJupyterKernelSpec | undefined>)}
-     * @memberof KernelService
-     */
-    public async findMatchingKernelSpec(
-        kernelSpec: nbformat.IKernelspecMetadata,
-        sessionManager?: IJupyterSessionManager,
-        cancelToken?: CancellationToken
-    ): Promise<IJupyterKernelSpec | undefined>;
-    /**
-     * Finds a kernel spec from a given session or jupyter process that matches a given interpreter.
-     *
-     * @param {PythonEnvironment} interpreter The interpreter (criteria) to be used when searching for a kernel.
-     * @param {(IJupyterSessionManager | undefined)} sessionManager If not provided search against the jupyter process.
-     * @param {CancellationToken} [cancelToken]
-     * @returns {(Promise<IJupyterKernelSpec | undefined>)}
-     * @memberof KernelService
-     */
-    public async findMatchingKernelSpec(
-        interpreter: PythonEnvironment,
-        sessionManager?: IJupyterSessionManager | undefined,
-        cancelToken?: CancellationToken
-    ): Promise<IJupyterKernelSpec | undefined>;
-    public async findMatchingKernelSpec(
-        option: nbformat.IKernelspecMetadata | PythonEnvironment,
-        sessionManager: IJupyterSessionManager | undefined,
-        cancelToken?: CancellationToken
-    ): Promise<IJupyterKernelSpec | undefined> {
-        const specs = await this.getKernelSpecs(sessionManager, cancelToken);
-        if (isInterpreter(option)) {
-            return specs.find((item) => {
-                if (item.language?.toLowerCase() !== PYTHON_LANGUAGE.toLowerCase()) {
-                    return false;
-                }
-                return (
-                    this.fs.areLocalPathsSame(item.argv[0], option.path) ||
-                    this.fs.areLocalPathsSame(item.metadata?.interpreter?.path || '', option.path)
-                );
-            });
-        } else {
-            return specs.find((item) => item.display_name === option.display_name && item.name === option.name);
-        }
-    }
 
     /**
      * Given a kernel, this will find an interpreter that matches the kernel spec.
@@ -243,11 +183,12 @@ export class KernelService {
         }
     }
     public async searchForKernel(
+        resource: Resource,
         interpreter: PythonEnvironment,
         cancelToken?: CancellationToken
     ): Promise<IJupyterKernelSpec | undefined> {
         // If a kernelspec already exists for this, then use that.
-        const found = await this.findMatchingKernelSpec(interpreter, undefined, cancelToken);
+        const found = await this.kernelFinder.findKernelSpec(resource, interpreter, cancelToken);
         if (found) {
             sendTelemetryEvent(Telemetry.UseExistingKernel);
 

@@ -1,12 +1,6 @@
 **/*.map
 **/*.analyzer.html
 !out/datascience-ui/common/node_modules/**/*
-!out/datascience-ui/notebook/commons.initial.bundle.js.map
-!out/datascience-ui/notebook/interactiveWindow.js.map
-!out/datascience-ui/notebook/nativeEditor.js.map
-!out/datascience-ui/viewers/commons.initial.bundle.js.map
-!out/datascience-ui/viewers/dataExplorer.js.map
-!out/datascience-ui/viewers/plotViewer.js.map
 !out/BCryptGenRandom/BCryptGenRandom.exe
 images/**
 docs/**
@@ -55,6 +49,8 @@ webpack.datascience-*.config.js
 .nvm/**
 .nyc_output
 .prettierrc.js
+.*ignore
+*.so
 .sonarcloud.properties
 .venv/**
 .vscode/**
@@ -113,3 +109,5 @@ test/**
 tmp/**
 typings/**
 types/**
+test-results*
+*.zip

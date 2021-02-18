@@ -15,8 +15,10 @@ import { IFileSystem } from '../../../common/platform/types';
 import { IDisposableRegistry, IExtensionContext } from '../../../common/types';
 import { createDeferred, Deferred } from '../../../common/utils/async';
 import { noop } from '../../../common/utils/misc';
+import { StopWatch } from '../../../common/utils/stopWatch';
 import { sendTelemetryEvent } from '../../../telemetry';
 import { CodeSnippets, Telemetry } from '../../constants';
+import { sendKernelTelemetryEvent, trackKernelResourceInformation } from '../../telemetry/telemetry';
 import { getNotebookMetadata } from '../../notebook/helpers/helpers';
 import {
     IDataScienceErrorHandler,
@@ -96,13 +98,20 @@ export class Kernel implements IKernel {
             interruptTimeout
         );
     }
+    private perceivedJupyterStartupTelemetryCaptured?: boolean;
     public async executeCell(cell: NotebookCell): Promise<void> {
+        const stopWatch = new StopWatch();
         const notebookPromise = this.startNotebook({ disableUI: false, document: cell.notebook });
-        await this.kernelExecution.executeCell(notebookPromise, cell);
+        const promise = this.kernelExecution.executeCell(notebookPromise, cell);
+        this.trackNotebookCellPerceivedColdTime(stopWatch, notebookPromise, promise).catch(noop);
+        await promise;
     }
     public async executeAllCells(document: NotebookDocument): Promise<void> {
+        const stopWatch = new StopWatch();
         const notebookPromise = this.startNotebook({ disableUI: false, document });
-        await this.kernelExecution.executeAllCells(notebookPromise, document);
+        const promise = this.kernelExecution.executeAllCells(notebookPromise, document);
+        this.trackNotebookCellPerceivedColdTime(stopWatch, notebookPromise, promise).catch(noop);
+        await promise;
     }
     public async start(options: { disableUI?: boolean; document: NotebookDocument }): Promise<void> {
         await this.startNotebook(options);
@@ -110,6 +119,7 @@ export class Kernel implements IKernel {
     public async interrupt(document: NotebookDocument): Promise<InterruptResult> {
         if (this.restarting) {
             traceInfo(`Interrupt requested & currently restarting ${document.uri}`);
+            trackKernelResourceInformation(document.uri, { interruptKernel: true });
             await this.restarting.promise;
         }
         traceInfo(`Interrupt requested ${document.uri}`);
@@ -145,11 +155,33 @@ export class Kernel implements IKernel {
             }
         }
     }
+    private async trackNotebookCellPerceivedColdTime(
+        stopWatch: StopWatch,
+        notebookPromise: Promise<INotebook | undefined>,
+        executionPromise: Promise<unknown>
+    ): Promise<void> {
+        if (this.perceivedJupyterStartupTelemetryCaptured) {
+            return;
+        }
+        const notebook = await notebookPromise;
+        if (!notebook) {
+            return;
+        }
+        // Setup telemetry
+        if (!this.perceivedJupyterStartupTelemetryCaptured) {
+            this.perceivedJupyterStartupTelemetryCaptured = true;
+            sendTelemetryEvent(Telemetry.PerceivedJupyterStartupNotebook, stopWatch.elapsedTime);
+            executionPromise.finally(() =>
+                sendTelemetryEvent(Telemetry.StartExecuteNotebookCellPerceivedCold, stopWatch.elapsedTime)
+            );
+        }
+    }
     private async startNotebook(options: { disableUI?: boolean; document: NotebookDocument }): Promise<INotebook> {
         if (this.restarting) {
             await this.restarting.promise;
         }
         if (!this._notebookPromise) {
+            const stopWatch = new StopWatch();
             this.startCancellation = new CancellationTokenSource();
             this._notebookPromise = new Promise<INotebook>(async (resolve, reject) => {
                 try {
@@ -170,12 +202,24 @@ export class Kernel implements IKernel {
                         }
                     } catch (ex) {
                         traceError('failed to create INotebook in kernel', ex);
+                        sendKernelTelemetryEvent(
+                            options.document.uri,
+                            Telemetry.NotebookStart,
+                            stopWatch.elapsedTime,
+                            undefined,
+                            ex
+                        );
                         if (!options.disableUI) {
                             this.errorHandler.handleError(ex).ignoreErrors(); // Just a notification, so don't await this
                         }
                         throw ex;
                     }
                     await this.initializeAfterStart();
+                    sendKernelTelemetryEvent(
+                        this.uri,
+                        Telemetry.PerceivedJupyterStartupNotebook,
+                        stopWatch.elapsedTime
+                    );
                     if (this.notebook?.connection) {
                         this.updateRemoteUriList(this.notebook.connection).catch(noop);
                     }
