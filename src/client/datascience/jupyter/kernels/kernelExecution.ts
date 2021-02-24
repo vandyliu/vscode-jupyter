@@ -101,10 +101,8 @@ export class KernelExecution implements IDisposable {
             traceInfo('Update notebook execution state as running');
 
             const updateNotebookStatus = chainWithPendingUpdates(editor.document, (edit) => {
-                edit.replaceNotebookMetadata(editor.document.uri, {
-                    ...document.metadata,
-                    runState: NotebookRunState.Running
-                });
+                const metadata = document.metadata.with({ runState: NotebookRunState.Running });
+                edit.replaceNotebookMetadata(editor.document.uri, metadata);
                 return edit;
             });
             cellsThatWeCanRun.forEach((cell) => executionQueue.queueCell(cell));
@@ -114,10 +112,8 @@ export class KernelExecution implements IDisposable {
         } finally {
             traceInfo('Restore notebook state to idle after completion');
             await chainWithPendingUpdates(editor.document, (edit) => {
-                edit.replaceNotebookMetadata(editor.document.uri, {
-                    ...document.metadata,
-                    runState: NotebookRunState.Idle
-                });
+                const metadata = document.metadata.with({ runState: NotebookRunState.Idle });
+                edit.replaceNotebookMetadata(editor.document.uri, metadata);
                 return edit;
             });
         }

@@ -9,6 +9,7 @@ import {
     EventEmitter,
     NotebookCell,
     NotebookCellKind,
+    NotebookCellMetadata,
     NotebookDocument,
     ProgressLocation,
     Uri,
@@ -81,6 +82,7 @@ export class NotebookEditor implements INotebookEditor {
     private _modified = new EventEmitter<INotebookEditor>();
     private executedCode = new EventEmitter<string>();
     private restartingKernel?: boolean;
+    private kernelInterruptedDontAskToRestart: boolean = false;
     constructor(
         public readonly model: INotebookModel,
         public readonly document: NotebookDocument,
@@ -156,7 +158,7 @@ export class NotebookEditor implements INotebookEditor {
                     {
                         cellKind: NotebookCellKind.Code,
                         language: defaultLanguage,
-                        metadata: {},
+                        metadata: new NotebookCellMetadata(),
                         outputs: [],
                         source: ''
                     }
@@ -173,11 +175,8 @@ export class NotebookEditor implements INotebookEditor {
         if (editor) {
             chainWithPendingUpdates(editor.document, (edit) => {
                 notebook.cells.forEach((cell, index) => {
-                    edit.replaceNotebookCellMetadata(editor.document.uri, index, {
-                        ...cell.metadata,
-                        inputCollapsed: false,
-                        outputCollapsed: false
-                    });
+                    const metadata = cell.metadata.with({ inputCollapsed: false, outputCollapsed: false });
+                    edit.replaceNotebookCellMetadata(editor.document.uri, index, metadata);
                 });
             }).then(noop, noop);
         }
@@ -191,11 +190,8 @@ export class NotebookEditor implements INotebookEditor {
         if (editor) {
             chainWithPendingUpdates(editor.document, (edit) => {
                 notebook.cells.forEach((cell, index) => {
-                    edit.replaceNotebookCellMetadata(editor.document.uri, index, {
-                        ...cell.metadata,
-                        inputCollapsed: true,
-                        outputCollapsed: true
-                    });
+                    const metadata = cell.metadata.with({ inputCollapsed: true, outputCollapsed: true });
+                    edit.replaceNotebookCellMetadata(editor.document.uri, index, metadata);
                 });
             }).then(noop, noop);
         }
@@ -225,6 +221,7 @@ export class NotebookEditor implements INotebookEditor {
                 const v = await this.applicationShell.showInformationMessage(message, yes, no);
                 if (v === yes) {
                     this.restartingKernel = false;
+                    this.kernelInterruptedDontAskToRestart = true;
                     await this.restartKernel();
                 }
             }
@@ -232,6 +229,7 @@ export class NotebookEditor implements INotebookEditor {
             traceError('Failed to interrupt kernel', err);
             void this.applicationShell.showErrorMessage(err);
         } finally {
+            this.kernelInterruptedDontAskToRestart = false;
             status.dispose();
         }
     }
@@ -337,11 +335,14 @@ export class NotebookEditor implements INotebookEditor {
         } catch (exc) {
             // If we get a kernel promise failure, then restarting timed out. Just shutdown and restart the entire server.
             // Note, this code might not be necessary, as such an error is thrown only when interrupting a kernel times out.
+            sendKernelTelemetryEvent(
+                this.document.uri,
+                Telemetry.NotebookRestart,
+                stopWatch.elapsedTime,
+                undefined,
+                exc
+            );
             if (exc instanceof JupyterKernelPromiseFailedError && kernel) {
-                sendKernelTelemetryEvent(this.document.uri, Telemetry.NotebookRestart, stopWatch.elapsedTime, {
-                    failed: true,
-                    failureCategory: 'kernelpromisetimeout'
-                });
                 // Old approach (INotebook is not exposed in IKernel, and INotebook will eventually go away).
                 const notebook = await this.notebookProvider.getOrCreateNotebook({
                     resource: this.file,
@@ -358,7 +359,6 @@ export class NotebookEditor implements INotebookEditor {
                     metadata: this.model.metadata
                 });
             } else {
-                sendKernelTelemetryEvent(this.document.uri, Telemetry.NotebookRestart, stopWatch.elapsedTime, exc);
                 // Show the error message
                 void this.applicationShell.showErrorMessage(exc);
                 traceError(exc);
@@ -369,6 +369,9 @@ export class NotebookEditor implements INotebookEditor {
         }
     }
     private async shouldAskForRestart(): Promise<boolean> {
+        if (this.kernelInterruptedDontAskToRestart) {
+            return false;
+        }
         const settings = this.configurationService.getSettings(this.file);
         return settings && settings.askForKernelRestart === true;
     }
