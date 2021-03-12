@@ -208,7 +208,7 @@ declare module 'vscode' {
          */
         readonly end: number;
 
-        isEmpty: boolean;
+        readonly isEmpty: boolean;
 
         constructor(start: number, end: number);
     }
@@ -348,7 +348,7 @@ declare module 'vscode' {
 
     export class NotebookData {
         cells: NotebookCellData[];
-        metadata?: NotebookDocumentMetadata;
+        metadata: NotebookDocumentMetadata;
         constructor(cells: NotebookCellData[], metadata?: NotebookDocumentMetadata);
     }
 
