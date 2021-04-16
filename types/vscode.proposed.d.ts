@@ -1060,17 +1060,6 @@
 		transientDocumentMetadata?: { [K in keyof NotebookDocumentMetadata]?: boolean };
 	}
 
-	export interface NotebookDocumentContentOptions {
-		/**
-		 * Not ready for production or development use yet.
-		 */
-		viewOptions?: {
-			displayName: string;
-			filenamePattern: NotebookFilenamePattern[];
-			exclusive?: boolean;
-		};
-	}
-
 	/**
 	 * Represents a notebook. Notebooks are composed of cells and metadata.
 	 */
