@@ -30,10 +30,6 @@ import { IApplicationEnvironment, IVSCodeNotebook, NotebookCellChangedEvent } fr
 
 @injectable()
 export class VSCodeNotebook implements IVSCodeNotebook {
-    public readonly onDidChangeActiveNotebookKernel: Event<{
-        document: NotebookDocument;
-        kernel: NotebookKernel | undefined;
-    }>;
     public readonly onDidChangeNotebookEditorSelection: Event<NotebookEditorSelectionChangeEvent>;
     public readonly onDidChangeActiveNotebookEditor: Event<NotebookEditor | undefined>;
     public readonly onDidOpenNotebookDocument: Event<NotebookDocument>;
@@ -68,7 +64,6 @@ export class VSCodeNotebook implements IVSCodeNotebook {
         if (this.useNativeNb) {
             this.addEventHandlers();
             this.canUseNotebookApi = true;
-            this.onDidChangeActiveNotebookKernel = notebook.onDidChangeActiveNotebookKernel;
             this.onDidChangeNotebookEditorSelection = window.onDidChangeNotebookEditorSelection;
             this.onDidChangeActiveNotebookEditor = window.onDidChangeActiveNotebookEditor;
             this.onDidOpenNotebookDocument = notebook.onDidOpenNotebookDocument;
@@ -76,10 +71,6 @@ export class VSCodeNotebook implements IVSCodeNotebook {
             this.onDidSaveNotebookDocument = notebook.onDidSaveNotebookDocument;
             this.onDidChangeNotebookDocument = this._onDidChangeNotebookDocument.event;
         } else {
-            this.onDidChangeActiveNotebookKernel = this.createDisposableEventEmitter<{
-                document: NotebookDocument;
-                kernel: NotebookKernel | undefined;
-            }>();
             this.onDidChangeNotebookEditorSelection = this.createDisposableEventEmitter<
                 NotebookEditorSelectionChangeEvent
             >();
