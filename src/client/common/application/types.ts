@@ -67,7 +67,6 @@ import {
     NotebookDocumentMetadataChangeEvent as VSCNotebookDocumentMetadataChangeEvent,
     NotebookEditor,
     NotebookEditorSelectionChangeEvent,
-    NotebookKernel,
     NotebookKernelProvider,
     NotebookCellStatusBarItemProvider,
     NotebookSelector,
