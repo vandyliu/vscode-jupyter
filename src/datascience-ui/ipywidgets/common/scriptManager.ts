@@ -3,6 +3,7 @@
 
 'use strict';
 
+import * as fastDeepEqual from 'fast-deep-equal';
 import { EventEmitter } from 'events';
 import * as isonline from 'is-online';
 import '../../../client/common/extensions';
@@ -26,6 +27,7 @@ export class ScriptManager extends EventEmitter {
         string,
         { deferred: Deferred<void>; timer: NodeJS.Timeout | number | undefined }
     >();
+    private previousKernelOptions?: any;
     private readonly registeredWidgetSources = new Map<string, WidgetScriptSource>();
     private timedoutWaitingForWidgetsToGetLoaded?: boolean;
     private widgetsCanLoadFromCDN: boolean = false;
@@ -46,10 +48,15 @@ export class ScriptManager extends EventEmitter {
                     this.widgetsCanLoadFromCDN = settings.widgetScriptSources.length > 0;
                 } else if (type === IPyWidgetMessages.IPyWidgets_WidgetScriptSourceResponse) {
                     this.registerScriptSourceInRequirejs(payload as WidgetScriptSource);
-                } else if (
-                    type === IPyWidgetMessages.IPyWidgets_kernelOptions ||
-                    type === IPyWidgetMessages.IPyWidgets_onKernelChanged
-                ) {
+                } else if (type === IPyWidgetMessages.IPyWidgets_kernelOptions) {
+                    console.log(`Received IPyWidgets_kernelOptions in ScriptManager`);
+                    if (this.previousKernelOptions && !fastDeepEqual(this.previousKernelOptions, payload)) {
+                        console.log(`Received IPyWidgets_kernelOptions in ScriptManager with new kernel options`);
+                        this.previousKernelOptions = payload;
+                        this.clear();
+                    }
+                } else if (type === IPyWidgetMessages.IPyWidgets_onKernelChanged) {
+                    console.log(`Received IPyWidgets_onKernelChanged in ScriptManager`);
                     this.clear();
                 }
                 return true;

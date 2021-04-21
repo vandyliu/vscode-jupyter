@@ -6,7 +6,6 @@ import {
     CancellationToken,
     Event,
     EventEmitter,
-    NotebookCommunication,
     NotebookDocument,
     NotebookKernel as VSCNotebookKernel
 } from 'vscode';
@@ -44,15 +43,12 @@ import {
     trackKernelInNotebookMetadata
 } from './helpers/helpers';
 import { VSCodeNotebookKernelMetadata } from './kernelWithMetadata';
-import { INotebookKernelProvider, INotebookKernelResolver } from './types';
+import { INotebookKernelProvider } from './types';
 import { ILocalKernelFinder, IRemoteKernelFinder } from '../kernel-launcher/types';
 import { traceInfo, traceInfoIf } from '../../common/logger';
 
 @injectable()
 export class VSCodeKernelPickerProvider implements INotebookKernelProvider {
-    // Keep a mapping of Document Uri => NotebookCommunication for widget tests
-    //public webviews = new Map<string, NotebookCommunication[]>();
-    public webviews = new WeakMap<NotebookDocument, NotebookCommunication[]>();
     public get onDidChangeKernels(): Event<NotebookDocument | undefined> {
         return this._onDidChangeKernels.event;
     }
@@ -65,7 +61,6 @@ export class VSCodeKernelPickerProvider implements INotebookKernelProvider {
         @inject(INotebookProvider) private readonly notebookProvider: INotebookProvider,
         @inject(IDisposableRegistry) disposables: IDisposableRegistry,
         @inject(IExtensionContext) private readonly context: IExtensionContext,
-        @inject(INotebookKernelResolver) private readonly kernelResolver: INotebookKernelResolver,
         @inject(IConfigurationService) private readonly configuration: IConfigurationService,
         @inject(PreferredRemoteKernelIdProvider)
         private readonly preferredRemoteKernelIdProvider: PreferredRemoteKernelIdProvider,
@@ -77,25 +72,8 @@ export class VSCodeKernelPickerProvider implements INotebookKernelProvider {
     ) {
         this.isLocalLaunch = isLocalLaunch(this.configuration);
         this.extensions.onDidChange(this.onDidChangeExtensions, this, disposables);
-        this.notebook.onDidCloseNotebookDocument(this.onDidCloseNotebook.bind(this));
     }
 
-    public async resolveKernel?(
-        kernel: VSCodeNotebookKernelMetadata,
-        document: NotebookDocument,
-        webview: NotebookCommunication,
-        token: CancellationToken
-    ): Promise<void> {
-        // Add webviews to our document mapping. Used for testing
-        let list = this.webviews.get(document);
-        if (!list) {
-            list = [];
-            this.webviews.set(document, list);
-        }
-        list.push(webview);
-
-        return this.kernelResolver.resolveKernel(kernel, document, webview, token);
-    }
     @captureTelemetry(Telemetry.KernelProviderPerf)
     public async provideKernels(
         document: NotebookDocument,
@@ -290,8 +268,4 @@ export class VSCodeKernelPickerProvider implements INotebookKernelProvider {
         }
     }
 
-    // On notebook document close delete our webview mapping
-    private onDidCloseNotebook(doc: NotebookDocument) {
-        this.webviews.delete(doc);
-    }
 }

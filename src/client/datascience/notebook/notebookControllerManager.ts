@@ -22,7 +22,7 @@ import { sendKernelTelemetryEvent, trackKernelResourceInformation } from '../tel
 import { INotebookProvider } from '../types';
 import { getNotebookMetadata, isJupyterNotebook, trackKernelInNotebookMetadata } from './helpers/helpers';
 import { VSCodeNotebookController } from './notebookExecutionHandler';
-import { INotebookControllerManager } from './types';
+import { INotebookControllerManager, INotebookKernelResolver } from './types';
 /**
  * This class tracks notebook documents that are open and the provides NotebookControllers for
  * each of them
@@ -47,6 +47,7 @@ export class NotebookControllerManager implements INotebookControllerManager, IE
         private readonly preferredRemoteKernelIdProvider: PreferredRemoteKernelIdProvider,
         @inject(IRemoteKernelFinder) private readonly remoteKernelFinder: IRemoteKernelFinder,
         @inject(INotebookStorageProvider) private readonly storageProvider: INotebookStorageProvider,
+        @inject(INotebookKernelResolver) private readonly kernelResolver: INotebookKernelResolver
     ) {
         this._onNotebookControllerSelected = new EventEmitter<{ notebook: NotebookDocument, controller: VSCodeNotebookController }>();
         this.isLocalLaunch = isLocalLaunch(this.configuration);
@@ -117,7 +118,7 @@ export class NotebookControllerManager implements INotebookControllerManager, IE
         // Create notebook selector
         const controller = new VSCodeNotebookController(document, kernelConnection,
             this.notebook, this.commandManager, this.kernelProvider,
-            this.preferredRemoteKernelIdProvider, this.context, this.disposables);
+            this.preferredRemoteKernelIdProvider, this.context, this.disposables, this.kernelResolver);
 
         // Hook up to if this NotebookController is selected or de-selected
         controller.onNotebookControllerSelected(this.handleOnNotebookControllerSelected, this, this.disposables);

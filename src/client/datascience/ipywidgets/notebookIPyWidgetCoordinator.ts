@@ -1,13 +1,13 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 import { inject, injectable } from 'inversify';
-import { NotebookCommunication, NotebookDocument, NotebookKernel, CancellationToken, Disposable } from 'vscode';
+import { NotebookDocument, CancellationToken, Disposable, NotebookEditor } from 'vscode';
 import { IVSCodeNotebook } from '../../common/application/types';
 import { Cancellation } from '../../common/cancellation';
 import { createDeferred } from '../../common/utils/async';
 import { IServiceContainer } from '../../ioc/types';
 import { InteractiveWindowMessages, IPyWidgetMessages } from '../interactive-common/interactiveWindowTypes';
-import { INotebookKernelResolver } from '../notebook/types';
+import { INotebookCommunication, INotebookKernelResolver } from '../notebook/types';
 import { CommonMessageCoordinator } from './commonMessageCoordinator';
 
 /**
@@ -16,7 +16,7 @@ import { CommonMessageCoordinator } from './commonMessageCoordinator';
 @injectable()
 export class NotebookIPyWidgetCoordinator implements INotebookKernelResolver {
     private messageCoordinators = new Map<string, Promise<CommonMessageCoordinator>>();
-    private attachedWebViews = new Map<string, { webviews: Set<string>; disposables: Disposable[] }>();
+    private attachedWebViews = new WeakMap<NotebookDocument, { webviews: WeakSet<NotebookEditor>; disposables: Disposable[] }>();
     constructor(
         @inject(IServiceContainer) private readonly serviceContainer: IServiceContainer,
         @inject(IVSCodeNotebook) private readonly notebookProvider: IVSCodeNotebook
@@ -28,9 +28,8 @@ export class NotebookIPyWidgetCoordinator implements INotebookKernelResolver {
         this.messageCoordinators.clear();
     }
     public resolveKernel(
-        _kernel: NotebookKernel,
         document: NotebookDocument,
-        webview: NotebookCommunication,
+        webview: INotebookCommunication,
         token: CancellationToken
     ): Promise<void> {
         // Create a handler for this notebook if we don't already have one. Since there's one of the notebookMessageCoordinator's for the
@@ -49,24 +48,24 @@ export class NotebookIPyWidgetCoordinator implements INotebookKernelResolver {
             const coordinator = this.messageCoordinators.get(e.uri.toString());
             void coordinator?.then((c) => c.dispose());
             this.messageCoordinators.delete(e.uri.toString());
-            const attachment = this.attachedWebViews.get(e.uri.toString());
+            const attachment = this.attachedWebViews.get(e);
             attachment?.disposables?.forEach((d) => d.dispose());
         }
     }
 
     private attachCoordinator(
         document: NotebookDocument,
-        webview: NotebookCommunication,
+        webview: INotebookCommunication,
         c: CommonMessageCoordinator
     ): Promise<void> {
         const promise = createDeferred<void>();
-        let attachment = this.attachedWebViews.get(document.uri.toString());
+        let attachment = this.attachedWebViews.get(document);
         if (!attachment) {
-            attachment = { webviews: new Set<string>(), disposables: [] };
-            this.attachedWebViews.set(document.uri.toString(), attachment);
+            attachment = { webviews: new WeakSet<NotebookEditor>(), disposables: [] };
+            this.attachedWebViews.set(document, attachment);
         }
-        if (!attachment.webviews.has(webview.editorId)) {
-            attachment.webviews.add(webview.editorId);
+        if (!attachment.webviews.has(webview.editor)) {
+            attachment.webviews.add(webview.editor);
 
             // Attach message requests to this webview (should dupe to all of them)
             attachment.disposables.push(

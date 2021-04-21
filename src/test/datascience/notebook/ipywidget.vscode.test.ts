@@ -10,7 +10,6 @@ import { assert } from 'chai';
 import { NotebookDocument, Uri } from 'vscode';
 import { IVSCodeNotebook } from '../../../client/common/application/types';
 import { IDisposable } from '../../../client/common/types';
-import { INotebookKernelProvider } from '../../../client/datascience/notebook/types';
 import { IExtensionTestApi } from '../../common';
 import { initialize } from '../../initialize';
 import { openNotebook } from '../helpers';
@@ -26,8 +25,8 @@ import {
 } from './helper';
 import { InteractiveWindowMessages } from '../../../client/datascience/interactive-common/interactiveWindowTypes';
 import { EXTENSION_ROOT_DIR_FOR_TESTS, IS_WEBVIEW_BUILD_SKIPPED } from '../../constants';
-import { VSCodeKernelPickerProvider } from '../../../client/datascience/notebook/kernelProvider';
 import { createDeferred, Deferred } from '../../../client/common/utils/async';
+import { VSCodeNotebookController } from '../../../client/datascience/notebook/notebookExecutionHandler';
 
 /* eslint-disable @typescript-eslint/no-explicit-any, no-invalid-this */
 suite('DataScience - VSCode Notebook - IPyWidget test', () => {
@@ -137,15 +136,10 @@ suite('DataScience - VSCode Notebook - IPyWidget test', () => {
     // Resolve a deferred when we see the target uri has an associated webview and the webview
     // loaded a widget successfully
     function flagForWebviewLoad(flag: Deferred<boolean>, targetDoc: NotebookDocument) {
-        const notebookKernelProvider = api.serviceContainer.get<INotebookKernelProvider>(
-            INotebookKernelProvider
-        ) as VSCodeKernelPickerProvider;
-
-        // Content provider should have a public member that maps webviews. Listen to messages on this webview
-        const webviews = notebookKernelProvider.webviews.get(targetDoc);
-        assert.equal(webviews?.length, 1, 'No webviews found in kernel provider');
-        if (webviews) {
-            webviews[0].onDidReceiveMessage((e) => {
+        const commsList = VSCodeNotebookController.Communications.get(targetDoc) || [];
+        assert.equal(commsList.length, 1, 'No webviews found in kernel provider');
+        if (Array.isArray(commsList) && commsList.length > 0) {
+            commsList[0].onDidReceiveMessage((e) => {
                 if (e.type === InteractiveWindowMessages.IPyWidgetLoadSuccess) {
                     flag.resolve(true);
                 }

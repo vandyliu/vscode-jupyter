@@ -2,7 +2,19 @@
 // Licensed under the MIT License.
 
 import { join } from 'path';
-import { Disposable, EventEmitter, NotebookCell, NotebookController, NotebookDocument, NotebookKernelPreload, NotebookSelector, Uri } from 'vscode';
+import {
+    CancellationTokenSource,
+    Disposable,
+    EventEmitter,
+    NotebookCell,
+    NotebookController,
+    NotebookDocument,
+    NotebookEditor,
+    NotebookKernelPreload,
+    NotebookSelector,
+    Uri,
+    window
+} from 'vscode';
 import { ICommandManager, IVSCodeNotebook } from '../../common/application/types';
 import { disposeAllDisposables } from '../../common/helpers';
 import { traceInfo } from '../../common/logger';
@@ -15,14 +27,72 @@ import { PreferredRemoteKernelIdProvider } from '../notebookStorage/preferredRem
 import { KernelSocketInformation } from '../types';
 import { JupyterNotebookView } from './constants';
 import { traceCellMessage, trackKernelInfoInNotebookMetadata } from './helpers/helpers';
+import { INotebookCommunication, INotebookKernelResolver } from './types';
 
+class NotebookCommunication implements INotebookCommunication, IDisposable {
+    private eventHandlerListening?: boolean;
+    private pendingMessages: any[] = [];
+    private readonly disposables: IDisposable[] = [];
+    private readonly _onDidReceiveMessage = new EventEmitter<any>();
+    constructor(public readonly editor: NotebookEditor, private readonly controller: NotebookController) {
+        controller.onDidReceiveMessage(
+            (e) => {
+                if (e.editor === this.editor) {
+                    // If the listeners haven't been hooked up, then dont fire the event (nothing listening).
+                    // Instead buffer the messages and fire the events later.
+                    if (this.eventHandlerListening) {
+                        this.sendPendingMessages();
+                        this._onDidReceiveMessage.fire(e.message);
+                    } else {
+                        this.pendingMessages.push(e.message);
+                    }
+                }
+            },
+            this,
+            this.disposables
+        );
+    }
+    public dispose() {
+        disposeAllDisposables(this.disposables);
+    }
+    public get onDidReceiveMessage() {
+        this.eventHandlerListening = true;
+        // Immeidately after the event handler is added, send the pending messages.
+        setTimeout(() => this.sendPendingMessages(), 0);
+        return this._onDidReceiveMessage.event;
+    }
+    public postMessage(message: any): Thenable<boolean> {
+        return this.controller.postMessage(message, this.editor);
+    }
+    public asWebviewUri(localResource: Uri): Uri {
+        return this.controller.asWebviewUri(localResource);
+    }
+    private sendPendingMessages(){
+        if (this.pendingMessages.length) {
+            let message = this.pendingMessages.shift();
+            while (message) {
+                this._onDidReceiveMessage.fire(message);
+                message = this.pendingMessages.shift();
+            }
+        }
+    }
+}
 // IANHU: Rename file, rename class?
 export class VSCodeNotebookController implements Disposable {
-    private readonly _onNotebookControllerSelected: EventEmitter<{ notebook: NotebookDocument, controller: VSCodeNotebookController }>;
+    private readonly _onNotebookControllerSelected: EventEmitter<{
+        notebook: NotebookDocument;
+        controller: VSCodeNotebookController;
+    }>;
+    private readonly disposables: IDisposable[] = [];
+    private selected?: boolean;
     private notebookKernels = new WeakMap<NotebookDocument, IKernel>();
+    /**
+     * Public & used for purely for testing (in tests) purposes.
+     */
+    public static Communications = new WeakMap<NotebookDocument, NotebookCommunication[]>();
+    private editorsInitailizedForWidgets = new WeakMap<NotebookEditor, NotebookCommunication>();
     private controller: NotebookController;
     private isDisposed = false;
-
     get id() {
         return this.controller.id;
     }
@@ -48,30 +118,43 @@ export class VSCodeNotebookController implements Disposable {
         return this._onNotebookControllerSelected.event;
     }
 
-
     // IANHU: Passing the API in here? Not sure if that is right, but I like this class owning the create
-    constructor(private readonly document: NotebookDocument, private readonly kernelConnection: KernelConnectionMetadata,
+    constructor(
+        private readonly document: NotebookDocument,
+        private readonly kernelConnection: KernelConnectionMetadata,
         private readonly notebookApi: IVSCodeNotebook,
         private readonly commandManager: ICommandManager,
         private readonly kernelProvider: IKernelProvider,
         private readonly preferredRemoteKernelIdProvider: PreferredRemoteKernelIdProvider,
         private readonly context: IExtensionContext,
-        private readonly disposable: IDisposableRegistry
+        disposableRegistry: IDisposableRegistry,
+        private readonly kernelResolver: INotebookKernelResolver
     ) {
-        this._onNotebookControllerSelected = new EventEmitter<{ notebook: NotebookDocument, controller: VSCodeNotebookController }>();
+        disposableRegistry.push(this);
+        this._onNotebookControllerSelected = new EventEmitter<{
+            notebook: NotebookDocument;
+            controller: VSCodeNotebookController;
+        }>();
 
         const selector: NotebookSelector = { viewType: JupyterNotebookView, pattern: document.uri.fsPath };
         const id: string = `${document.uri.toString()} - ${kernelConnection.id}`;
-        this.controller = this.notebookApi.createNotebookController(id, selector, getDisplayNameOrNameOfKernelConnection(kernelConnection), this.handleExecution.bind(this), this.preloads());
+        this.controller = this.notebookApi.createNotebookController(
+            id,
+            selector,
+            getDisplayNameOrNameOfKernelConnection(kernelConnection),
+            this.handleExecution.bind(this),
+            this.preloads()
+        );
         // IANHU: Detail is missing
         this.controller.interruptHandler = this.handleInterrupt.bind(this);
+        this.controller.onDidReceiveMessage(this.onDidReceiveMessage, this, this.disposables);
         this.controller.description = getDescriptionOfKernelConnection(kernelConnection);
         this.controller.hasExecutionOrder = true;
         // IANHU: Add our full supported language list here
         this.controller.supportedLanguages = ['python'];
-
+        window.onDidChangeVisibleNotebookEditors(this.onDidChangeVisibleNotebookEditors, this, this.disposables);
         // Hook up to see when this NotebookController is selected by the UI
-        this.controller.onDidChangeNotebookAssociation(this.onDidChangeNotebookAssociation, this, this.disposable);
+        this.controller.onDidChangeNotebookAssociation(this.onDidChangeNotebookAssociation, this, this.disposables);
     }
 
     //public onNotebookControllerSelected(): Event<{ notebook: NotebookDocument, controller: VSCodeNotebookController }> {
@@ -84,16 +167,68 @@ export class VSCodeNotebookController implements Disposable {
             this.isDisposed = true;
             this.controller.dispose();
         }
+        disposeAllDisposables(this.disposables);
     }
 
     // IANHU: Need this? Felt like I did to surface the right info
-    private onDidChangeNotebookAssociation(event: { notebook: NotebookDocument, selected: boolean }) {
+    private onDidChangeNotebookAssociation(event: { notebook: NotebookDocument; selected: boolean }) {
+        this.selected = event.selected;
+        if (event.selected) {
+            this.initializeNotebookCommunications();
+        } else {
+            this.disposeNotebookCommunications();
+        }
         // If this NotebookController was selected, fire off the event
         if (event.selected) {
             this._onNotebookControllerSelected.fire({ notebook: event.notebook, controller: this });
         }
     }
 
+    private async onDidChangeVisibleNotebookEditors(e: NotebookEditor[]) {
+        if (!this.selected) {
+            return;
+        }
+        // Find any new editors that may be associated with the current notebook.
+        // This can happen when users split editors.
+        e.filter((item) => item.document === this.document).map((editor) =>
+            this.initializeNotebookCommunication(editor)
+        );
+    }
+    private initializeNotebookCommunications() {
+        window.visibleNotebookEditors
+            .filter((item) => item.document === this.document)
+            .map((editor) => this.initializeNotebookCommunication(editor));
+    }
+    private disposeNotebookCommunications() {
+        window.visibleNotebookEditors
+            .filter((item) => item.document === this.document)
+            .map((editor) => {
+                const comms = this.editorsInitailizedForWidgets.get(editor);
+                if (comms) {
+                    comms.dispose();
+                }
+            });
+    }
+    private initializeNotebookCommunication(editor: NotebookEditor) {
+        if (this.editorsInitailizedForWidgets.has(editor)) {
+            return;
+        }
+        const comms = new NotebookCommunication(editor, this.controller);
+        this.disposables.push(comms);
+        this.editorsInitailizedForWidgets.set(editor, comms);
+        VSCodeNotebookController.Communications.set(
+            this.document,
+            VSCodeNotebookController.Communications.get(this.document) || []
+        );
+        VSCodeNotebookController.Communications.get(this.document)!.push(comms);
+        const { token } = new CancellationTokenSource();
+        this.kernelResolver.resolveKernel(this.document, comms, token).catch(noop);
+    }
+    private onDidReceiveMessage(e: { editor: NotebookEditor; message: any }) {
+        if (e.editor.document !== this.document) {
+            return;
+        }
+    }
     private preloads(): NotebookKernelPreload[] {
         return [
             { uri: Uri.file(join(this.context.extensionPath, 'out', 'ipywidgets', 'dist', 'ipywidgets.js')) },
@@ -117,7 +252,7 @@ export class VSCodeNotebookController implements Disposable {
             .then(noop, (ex) => console.error(ex));
     }
 
-    // IANHU: Is the async an issue here? 
+    // IANHU: Is the async an issue here?
     private async handleExecution(cells: NotebookCell[]) {
         // When we receive a cell execute request, first ensure that the notebook is trusted.
         // If it isn't already trusted, block execution until the user trusts it.
