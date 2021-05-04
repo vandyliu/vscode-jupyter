@@ -96,6 +96,9 @@ export class VSCodeNotebookController implements Disposable {
 
         // Hook up to see when this NotebookController is selected by the UI
         this.controller.onDidChangeNotebookAssociation(this.onDidChangeNotebookAssociation, this, this.disposables);
+
+        // Handle messages coming in
+        this.controller.onDidReceiveMessage(this.onDidReceiveMessageInternal, this, this.disposables);
     }
 
     public asWebviewUri(localResource: Uri): Uri {
@@ -106,6 +109,12 @@ export class VSCodeNotebookController implements Disposable {
         const messageType = message && 'message' in message ? message.message : '';
         traceInfo(`${ConsoleForegroundColors.Green}Posting message to Notebook UI ${messageType}`);
         return this.controller.postMessage(message, editor);
+    }
+
+    //readonly onDidReceiveMessage: Event<{ editor: NotebookEditor, message: any }>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    public onDidReceiveMessageInternal(event: { editor: NotebookEditor; message: any }) {
+        traceInfo(`${event.message}`);
     }
 
     public dispose() {
@@ -185,6 +194,9 @@ export class VSCodeNotebookController implements Disposable {
                 uri: Uri.file(
                     join(this.context.extensionPath, 'out', 'datascience-ui', 'notebook', 'fontAwesomeLoader.js')
                 )
+            },
+            {
+                uri: Uri.file(join(this.context.extensionPath, 'out', 'datascience-ui', 'notebook', 'pyforest.js'))
             }
         ];
     }
