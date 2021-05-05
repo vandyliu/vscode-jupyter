@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
+import { EOL } from 'os';
 import { join } from 'path';
 import {
     Disposable,
@@ -27,6 +28,7 @@ import { IKernel, IKernelProvider, KernelConnectionMetadata } from '../jupyter/k
 import { PreferredRemoteKernelIdProvider } from '../notebookStorage/preferredRemoteKernelIdProvider';
 import { KernelSocketInformation } from '../types';
 import { JupyterNotebookView } from './constants';
+import { updateCellCode } from './helpers/executionHelpers';
 import {
     isSameAsTrackedKernelInNotebookMetadata,
     traceCellMessage,
@@ -111,10 +113,13 @@ export class VSCodeNotebookController implements Disposable {
         return this.controller.postMessage(message, editor);
     }
 
-    //readonly onDidReceiveMessage: Event<{ editor: NotebookEditor, message: any }>;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     public onDidReceiveMessageInternal(event: { editor: NotebookEditor; message: any }) {
-        traceInfo(`${event.message}`);
+        // Intercept our pyforest messages and handle them special case in the controller
+        if (event.message.importString) {
+            traceInfo('Got PyForest Message');
+            this.handlePyforest(event.editor, event.message.importString);
+        }
     }
 
     public dispose() {
@@ -148,6 +153,31 @@ export class VSCodeNotebookController implements Disposable {
         // Notebook is trusted. Continue to execute cells
         traceInfo(`Execute Cells request ${cells.length} ${cells.map((cell) => cell.index).join(', ')}`);
         await Promise.all(cells.map((cell) => this.executeCell(targetNotebook, cell)));
+    }
+
+    // Handle pyforest messages from the editor
+    private handlePyforest(editor: NotebookEditor, importString: string) {
+        const firstCell = editor.document.cellAt(0);
+        const existingText = firstCell.document.getText();
+        const newText = this.updateCellContents(importString, existingText);
+
+        updateCellCode(firstCell, newText).ignoreErrors();
+    }
+
+    // Update the contents of the first code cell with new pyforest imports
+    private updateCellContents(importString: string, currentText: string) {
+        const separator = `# ^^^ pyforest auto-imports - don't write above this line`;
+
+        const cellParts = currentText.split(separator);
+
+        let userContent: string[] = [];
+        if (cellParts.length > 1) {
+            userContent = cellParts.slice(1);
+        } else {
+            userContent = cellParts;
+        }
+
+        return importString + EOL + separator + EOL + userContent.join(EOL).trim();
     }
 
     private onDidChangeNotebookAssociation(event: { notebook: NotebookDocument; selected: boolean }) {
