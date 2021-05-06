@@ -8,6 +8,7 @@ import {
     env,
     EventEmitter,
     NotebookCell,
+    NotebookCellExecutionTask,
     NotebookController,
     NotebookControllerAffinity,
     NotebookDocument,
@@ -44,7 +45,7 @@ export class VSCodeNotebookController implements Disposable {
     }>;
     private readonly disposables: IDisposable[] = [];
     private notebookKernels = new WeakMap<NotebookDocument, IKernel>();
-    private controller: NotebookController;
+    public readonly controller: NotebookController;
     private isDisposed = false;
     get id() {
         return this.controller.id;
@@ -180,6 +181,9 @@ export class VSCodeNotebookController implements Disposable {
         return importString + EOL + separator + EOL + userContent.join(EOL).trim();
     }
 
+    public createNotebookCellExecutionTask(cell: NotebookCell): NotebookCellExecutionTask {
+        return this.controller.createNotebookCellExecutionTask(cell);
+    }
     private onDidChangeNotebookAssociation(event: { notebook: NotebookDocument; selected: boolean }) {
         // If this NotebookController was selected, fire off the event
         if (event.selected) {
@@ -198,37 +202,16 @@ export class VSCodeNotebookController implements Disposable {
         // Work around for known issue with CodeSpaces
         const codeSpaceScripts =
             env.uiKind === UIKind.Web
-                ? [
-                      {
-                          uri: Uri.file(
-                              join(
-                                  this.context.extensionPath,
-                                  'out',
-                                  'datascience-ui',
-                                  'ipywidgetsKernel',
-                                  'require.js'
-                              )
-                          )
-                      }
-                  ]
+                ? [join(this.context.extensionPath, 'out', 'datascience-ui', 'ipywidgetsKernel', 'require.js')]
                 : [];
         return [
             ...codeSpaceScripts,
-            { uri: Uri.file(join(this.context.extensionPath, 'out', 'ipywidgets', 'dist', 'ipywidgets.js')) },
-            {
-                uri: Uri.file(
-                    join(this.context.extensionPath, 'out', 'datascience-ui', 'ipywidgetsKernel', 'ipywidgetsKernel.js')
-                )
-            },
-            {
-                uri: Uri.file(
-                    join(this.context.extensionPath, 'out', 'datascience-ui', 'notebook', 'fontAwesomeLoader.js')
-                )
-            },
-            {
-                uri: Uri.file(join(this.context.extensionPath, 'out', 'datascience-ui', 'notebook', 'pyforest.js'))
-            }
-        ];
+            join(this.context.extensionPath, 'out', 'ipywidgets', 'dist', 'ipywidgets.js'),
+
+            join(this.context.extensionPath, 'out', 'datascience-ui', 'ipywidgetsKernel', 'ipywidgetsKernel.js'),
+            join(this.context.extensionPath, 'out', 'datascience-ui', 'notebook', 'fontAwesomeLoader.js'),
+            join(this.context.extensionPath, 'out', 'datascience-ui', 'notebook', 'pyforest.js')
+        ].map((uri) => new NotebookKernelPreload(Uri.file(uri)));
     }
 
     private handleInterrupt(notebook: NotebookDocument) {
@@ -240,7 +223,10 @@ export class VSCodeNotebookController implements Disposable {
 
     private executeCell(doc: NotebookDocument, cell: NotebookCell) {
         traceInfo(`Execute Cell ${cell.index} ${cell.notebook.uri.toString()}`);
-        const kernel = this.kernelProvider.getOrCreate(cell.notebook.uri, { metadata: this.kernelConnection });
+        const kernel = this.kernelProvider.getOrCreate(cell.notebook.uri, {
+            metadata: this.kernelConnection,
+            controller: this.controller
+        });
         if (kernel) {
             this.updateKernelInfoInNotebookWhenAvailable(kernel, doc);
             return kernel.executeCell(cell);
