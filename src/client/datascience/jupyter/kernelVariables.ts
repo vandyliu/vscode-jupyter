@@ -24,6 +24,7 @@ import {
 } from '../types';
 import { JupyterDataRateLimitError } from './jupyterDataRateLimitError';
 import { getKernelConnectionLanguage, isPythonKernelConnection } from './kernels/helpers';
+// import { StreamTransportOptions } from 'winston/lib/winston/transports';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
 
@@ -48,6 +49,11 @@ const DataViewableTypes: Set<string> = new Set<string>([
 interface INotebookState {
     currentExecutionCount: number;
     variables: IJupyterVariable[];
+}
+
+interface SortOptions {
+    sortColumn: string;
+    sortAscending: boolean;
 }
 
 @injectable()
@@ -93,7 +99,7 @@ export class KernelVariables implements IJupyterVariables {
             return match;
         } else {
             // No items in the cache yet, just ask for the names
-            const names = await this.getVariableNamesFromKernel(notebook, token);
+            const names = await this.getVariableNamesAndTypeFromKernel(notebook, token);
             if (names) {
                 const matchName = names.find((n) => n === name);
                 if (matchName) {
@@ -314,18 +320,26 @@ export class KernelVariables implements IJupyterVariables {
         return JSON.parse(text) as T;
     }
 
-    private getParser(notebook: INotebook) {
+    private getParser(notebook: INotebook, sortOption?: SortOptions) {
         // Figure out kernel language
         const language = getKernelConnectionLanguage(notebook?.getKernelConnection()) || PYTHON_LANGUAGE;
 
         // We may have cached this information
         let result = this.languageToQueryMap.get(language);
+        result = undefined;
         if (!result) {
             let query = this.configService
                 .getSettings(notebook.resource)
                 .variableQueries.find((v) => v.language === language);
             if (!query && language === PYTHON_LANGUAGE) {
                 query = Settings.DefaultVariableQuery;
+                if (sortOption) {
+                    if (sortOption.sortAscending) {
+                        query.query = '_rwho_ls = %who_ls\n_rwho_ls.sort()\nprint(_rwho_ls)'
+                    } else {
+                        query.query = '_rwho_ls = %who_ls\n_rwho_ls.sort(reverse=True)\nprint(_rwho_ls)'
+                    }
+                }
             }
 
             // Use the query to generate our regex
@@ -334,13 +348,15 @@ export class KernelVariables implements IJupyterVariables {
                     query: query.query,
                     parser: new RegExp(query.parseExpr, 'g')
                 };
-                this.languageToQueryMap.set(language, result);
+                // TODO: Update this
+                // this.languageToQueryMap.set(language, result);
             }
         }
 
         return result;
     }
 
+    // TODOVANDY: probably need to adjust this so it returns string tuple or something
     private getAllMatches(regex: RegExp, text: string): string[] {
         const result: string[] = [];
         let m: RegExpExecArray | null = null;
@@ -366,9 +382,10 @@ export class KernelVariables implements IJupyterVariables {
         let list = this.notebookState.get(notebook.identity);
         if (!list || list.currentExecutionCount !== request.executionCount) {
             // Refetch the list of names from the notebook. They might have changed.
+            const sortOptions = {sortColumn: request.sortColumn, sortAscending: request.sortAscending} as SortOptions
             list = {
                 currentExecutionCount: request.executionCount,
-                variables: (await this.getVariableNamesFromKernel(notebook)).map((n) => {
+                variables: (await this.getVariableNamesAndTypeFromKernel(notebook, undefined, sortOptions)).map((n) => {
                     return {
                         name: n,
                         value: undefined,
@@ -460,9 +477,9 @@ export class KernelVariables implements IJupyterVariables {
         return result;
     }
 
-    private async getVariableNamesFromKernel(notebook: INotebook, token?: CancellationToken): Promise<string[]> {
+    private async getVariableNamesAndTypeFromKernel(notebook: INotebook, token?: CancellationToken, sortOptions?: SortOptions): Promise<string[]> {
         // Get our query and parser
-        const query = this.getParser(notebook);
+        const query = this.getParser(notebook, sortOptions);
 
         // Now execute the query
         if (notebook && query) {
