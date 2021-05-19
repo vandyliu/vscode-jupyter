@@ -93,7 +93,7 @@ export class KernelVariables implements IJupyterVariables {
             return match;
         } else {
             // No items in the cache yet, just ask for the names
-            const names = await this.getVariableNamesFromKernel(notebook, token);
+            const names = await (await this.getVariableNamesAndTypesFromKernel(notebook, token).map(var => var.name));
             if (names) {
                 const matchName = names.find((n) => n === name);
                 if (matchName) {
@@ -332,7 +332,7 @@ export class KernelVariables implements IJupyterVariables {
             if (query) {
                 result = {
                     query: query.query,
-                    parser: new RegExp(query.parseExpr, 'g')
+                    parser: new RegExp('\\n\w+\s+\w+', 'g')
                 };
                 this.languageToQueryMap.set(language, result);
             }
@@ -368,18 +368,7 @@ export class KernelVariables implements IJupyterVariables {
             // Refetch the list of names from the notebook. They might have changed.
             list = {
                 currentExecutionCount: request.executionCount,
-                variables: (await this.getVariableNamesFromKernel(notebook)).map((n) => {
-                    return {
-                        name: n,
-                        value: undefined,
-                        supportsDataExplorer: false,
-                        type: '',
-                        size: 0,
-                        shape: '',
-                        count: 0,
-                        truncated: true
-                    };
-                })
+                variables: await this.getVariableNamesAndTypesFromKernel(notebook)
             };
         }
 
@@ -397,7 +386,7 @@ export class KernelVariables implements IJupyterVariables {
 
         // Use the list of names to fetch the page of data
         if (list) {
-            type SortableColumn = "name";
+            type SortableColumn = "name" | "type";
             const sortColumn = request.sortColumn as SortableColumn;
             const comparer = (a: IJupyterVariable, b: IJupyterVariable): number => {
                 if (!request.sortAscending) {
@@ -471,7 +460,7 @@ export class KernelVariables implements IJupyterVariables {
         return result;
     }
 
-    private async getVariableNamesFromKernel(notebook: INotebook, token?: CancellationToken): Promise<string[]> {
+    private async getVariableNamesAndTypesFromKernel(notebook: INotebook, token?: CancellationToken): Promise<IJupyterVariable[]> {
         // Get our query and parser
         const query = this.getParser(notebook);
 
@@ -481,12 +470,28 @@ export class KernelVariables implements IJupyterVariables {
             const text = this.extractJupyterResultText(cells);
 
             // Apply the expression to it
-            const matches = this.getAllMatches(query.parser, text);
+            const strMatches = this.getAllMatches(query.parser, text);
+
+            const matches = [];
 
             // Turn each match into a value
-            if (matches) {
-                return matches;
+            for (let i = 0; i < strMatches.length; i++) {
+                const nameTypePair = strMatches[i].split(' ');
+                const name = nameTypePair[0];
+                const type = nameTypePair[1];
+                const value = {
+                    name: name,
+                    value: undefined,
+                    supportsDataExplorer: false,
+                    type: type,
+                    size: 0,
+                    shape: '',
+                    count: 0,
+                    truncated: true
+                };
+                matches.push(value);
             }
+            return matches;
         }
 
         return [];
