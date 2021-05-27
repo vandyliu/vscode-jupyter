@@ -93,9 +93,9 @@ export class KernelVariables implements IJupyterVariables {
             return match;
         } else {
             // No items in the cache yet, just ask for the names
-            const names = await (await this.getVariableNamesAndTypesFromKernel(notebook, token).map(var => var.name));
-            if (names) {
-                const matchName = names.find((n) => n === name);
+            const variables = await (await this.getVariableNamesAndTypesFromKernel(notebook, token));
+            if (variables) {
+                const matchName = variables.find((v) => v.name === name);
                 if (matchName) {
                     return this.getVariableValueFromKernel(
                         {
@@ -331,8 +331,8 @@ export class KernelVariables implements IJupyterVariables {
             // Use the query to generate our regex
             if (query) {
                 result = {
-                    query: query.query,
-                    parser: new RegExp('\\n\w+\s+\w+', 'g')
+                    query: '%whos',
+                    parser: new RegExp('\\n\\w+\\s+\\w+', 'g')
                 };
                 this.languageToQueryMap.set(language, result);
             }
@@ -355,6 +355,8 @@ export class KernelVariables implements IJupyterVariables {
         }
         // Rest after searching
         regex.lastIndex = -1;
+        console.log('regex results');
+        console.log(result);
         return result;
     }
 
@@ -466,10 +468,11 @@ export class KernelVariables implements IJupyterVariables {
 
         // Now execute the query
         if (notebook && query) {
-            const cells = await notebook.execute(query.query, Identifiers.EmptyFileName, 0, uuid(), token, true);
+            const cells = await notebook.execute('%whos', Identifiers.EmptyFileName, 0, uuid(), token, true);
             const text = this.extractJupyterResultText(cells);
 
             // Apply the expression to it
+            query.parser = /\n\w+\s+\w+/;
             const strMatches = this.getAllMatches(query.parser, text);
 
             const matches = [];
@@ -477,6 +480,8 @@ export class KernelVariables implements IJupyterVariables {
             // Turn each match into a value
             for (let i = 0; i < strMatches.length; i++) {
                 const nameTypePair = strMatches[i].split(' ');
+                console.log('name type pair');
+                console.log(nameTypePair);
                 const name = nameTypePair[0];
                 const type = nameTypePair[1];
                 const value = {

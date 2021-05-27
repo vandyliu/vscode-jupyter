@@ -101,7 +101,11 @@ function toggleVariableExplorer(arg: VariableReducerArg): IVariableState {
     }
 }
 
+<<<<<<< HEAD
 function handleSort(arg: VariableReducerArg<ISortVariablesRequest>) : IVariableState {
+=======
+function handleSort(arg: VariableReducerArg<ISortVariablesRequest>): IVariableState {
+>>>>>>> main
     const sortColumn = arg.payload.data.sortColumn;
     const sortAscending = arg.payload.data.sortAscending;
     const result = handleRequest({
