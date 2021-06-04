@@ -101,7 +101,7 @@ ${buildSettingsCss(this.props.settings)}`}</style>
             gridHeight: this.props.variableState.gridHeight,
             containerHeight: this.props.variableState.containerHeight,
             variables: this.props.variableState.variables,
-            debugging: this.props.debugging,
+            debugging: this.props.variableState.showVariablesOnDebug,
             busy: this.props.busy,
             showDataExplorer: this.props.showDataViewer,
             skipDefault: this.props.skipDefault,
