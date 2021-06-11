@@ -157,6 +157,7 @@ export class JupyterVariableDataProvider implements IJupyterVariableDataProvider
                 columnName,
                 this.notebook
             );
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             columns = (dataFrameColumnData as any) as IColsResponse;
         }
         return columns;

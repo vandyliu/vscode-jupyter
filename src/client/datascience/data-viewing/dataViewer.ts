@@ -208,7 +208,7 @@ export class DataViewer extends WebviewPanelHost<IDataViewerMapping> implements 
     public async getHistoryItem(index: number) {
         const variableName = this.historyList[index].variableName;
 
-        this.updateWithNewVariable(variableName);
+        void this.updateWithNewVariable(variableName);
     }
 
     public async refreshData() {
@@ -287,15 +287,15 @@ export class DataViewer extends WebviewPanelHost<IDataViewerMapping> implements 
                 break;
 
             case InteractiveWindowMessages.LoadTmLanguageRequest:
-                this.requestTmLanguage(payload);
+                void this.requestTmLanguage(payload);
                 break;
 
             case InteractiveWindowMessages.LoadOnigasmAssemblyRequest:
-                this.requestOnigasm();
+                void this.requestOnigasm();
                 break;
 
             case CssMessages.GetMonacoThemeRequest:
-                this.handleMonacoThemeRequest(payload);
+                void this.handleMonacoThemeRequest(payload);
                 break;
 
             default:
@@ -481,6 +481,7 @@ export class DataViewer extends WebviewPanelHost<IDataViewerMapping> implements 
     private async generateNotebook() {
         const dataCleanCode = this.getCode();
         const notebookEditor = await this.commandManager.executeCommand(Commands.CreateNewNotebook);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const blankCell = (notebookEditor as any).document.cellAt(0) as NotebookCell;
         await updateCellCode(blankCell, dataCleanCode);
     }
@@ -488,10 +489,14 @@ export class DataViewer extends WebviewPanelHost<IDataViewerMapping> implements 
     private async getColumnStats(columnName: string) {
         if (this.dataProvider && columnName !== undefined) {
             const columnData = await this.dataProvider.getCols(columnName);
-            this.postMessage(DataViewerMessages.GetHistogramResponse, { cols: columnData, columnName: columnName });
+            void this.postMessage(DataViewerMessages.GetHistogramResponse, {
+                cols: columnData,
+                columnName: columnName
+            });
         }
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private async handleCommand(payload: { command: string; args: any }) {
         const notebook = (this.dataProvider as IJupyterVariableDataProvider).notebook;
         let code = '';
@@ -608,13 +613,13 @@ ${newVariableName}["${target}"] = scaler.fit_transform(${newVariableName}["${tar
                 this.getHistoryItem(payload.args.index).ignoreErrors();
                 break;
             case 'describe':
-                this.getColumnStats(payload.args.columnName);
+                void this.getColumnStats(payload.args.columnName);
                 break;
         }
         const dataCleaningMode = this.configService.getSettings().dataCleaningMode;
         if (dataCleaningMode === 'standalone') {
             if (code && notebook !== undefined) {
-                notebook?.execute(code, '', 0, uuid()).then(async () => {
+                void notebook?.execute(code, '', 0, uuid()).then(async () => {
                     if (this.existingDisposable) {
                         this.existingDisposable.dispose();
                     }
@@ -623,9 +628,11 @@ ${newVariableName}["${target}"] = scaler.fit_transform(${newVariableName}["${tar
             }
         } else if (dataCleaningMode === 'jupyter_notebook') {
             if (code && matchingNotebookEditor !== undefined) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 let cells = (matchingNotebookEditor as any).document.getCells();
                 let lastCell = cells[cells.length - 1] as NotebookCell;
                 await addNewCellAfter(lastCell, '');
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 cells = (matchingNotebookEditor as any).document.getCells();
                 lastCell = cells[cells.length - 1] as NotebookCell;
                 await updateCellCode(lastCell, code);
