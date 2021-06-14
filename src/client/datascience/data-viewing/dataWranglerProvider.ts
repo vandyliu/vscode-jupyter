@@ -54,7 +54,6 @@ export class DataWranglerProvider implements IDataWranglerProvider, IExtensionSi
         @inject(IApplicationShell) private appShell: IApplicationShell,
         @inject(ICommandManager) private commandManager: ICommandManager
     ) {
-        // this.commandManager.registerCommand(Commands.ImportAsDataFrame, this.importFileAsDataFrameFromContextMenu.bind(this));
         this.dataViewerChecker = new DataViewerChecker(configService, appShell);
     }
 
@@ -66,7 +65,7 @@ export class DataWranglerProvider implements IDataWranglerProvider, IExtensionSi
             canSelectMany: false,
             filters: filtersObject
         });
-        console.log('hi');
+
         if (uris && uris.length > 0) {
             await this.importFileAsDataFrameFromContextMenu(uris[0]);
         }

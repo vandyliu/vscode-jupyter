@@ -60,5 +60,6 @@
     ],
     "typescript.preferences.importModuleSpecifier": "relative",
     "debug.javascript.usePreview": false,
-    "python.pythonPath": ".venv/bin/python"
+    "python.pythonPath": ".venv/bin/python",
+    "terminal.integrated.defaultProfile.windows": "Git Bash"
 }

@@ -70,9 +70,11 @@ export type IDataViewerMapping = {
     [DataViewerMessages.GetRowsResponse]: IGetRowsResponse;
     [DataViewerMessages.CompletedData]: never | undefined;
     [DataViewerMessages.GetSliceRequest]: IGetSliceRequest;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     [DataViewerMessages.SubmitCommand]: { command: string; args: any };
     [DataViewerMessages.RefreshDataViewer]: never | undefined;
     [DataViewerMessages.SliceEnablementStateChanged]: { newState: boolean };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     [DataViewerMessages.UpdateHistoryList]: any[] | undefined;
     [DataViewerMessages.GetHistoryItem]: number | undefined;
     [DataViewerMessages.GetHistogramResponse]: IGetColsResponse;
@@ -118,6 +120,7 @@ export enum ColumnType {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type IRowsResponse = any[];
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type IColsResponse = any[];
 
 export const IDataViewerFactory = Symbol('IDataViewerFactory');

@@ -12,19 +12,17 @@ import { CodeSection } from './controls/CodeSection';
 interface IControlPanelProps {
     data: ISlickRow[];
     headers: string[];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     historyList: any[];
     resizeEvent: Slick.Event<void>;
     monacoTheme: string;
     histogramData?: IGetColsResponse;
     currentVariableName: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     submitCommand(data: { command: string; args: any }): void;
 }
 
 export class ControlPanel extends React.Component<IControlPanelProps> {
-    constructor(props: IControlPanelProps) {
-        super(props);
-    }
-
     render() {
         const columnDropdownOptions = this.generateColumnDropdownOptions();
 

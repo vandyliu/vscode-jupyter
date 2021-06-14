@@ -118,7 +118,7 @@ export class DataViewerFactory implements IDataViewerFactory, IAsyncDisposable {
             if (range) {
                 const word = document.getText(range);
                 for (const viewer of this.knownViewers) {
-                    viewer.updateWithNewVariable(word);
+                    void viewer.updateWithNewVariable(word);
                 }
             }
         }
