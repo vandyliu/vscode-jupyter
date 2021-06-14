@@ -20,6 +20,7 @@ interface ICellInputProps {
     cellVM: ICellViewModel;
     language: string;
     codeVersion: number;
+    codeTheme: string;
     testMode?: boolean;
     history: InputHistory | undefined;
     showWatermark: boolean;
@@ -100,6 +101,7 @@ export class CellInput extends React.Component<ICellInputProps> {
                         history={this.props.history}
                         code={this.getRenderableInputCode()}
                         testMode={this.props.testMode ? true : false}
+                        codeTheme={this.props.codeTheme}
                         readOnly={!this.props.cellVM.editable || !this.props.isNotebookTrusted}
                         showWatermark={this.props.showWatermark}
                         ref={this.codeRef}
@@ -139,6 +141,7 @@ export class CellInput extends React.Component<ICellInputProps> {
                         editorOptions={this.props.editorOptions}
                         readOnly={!this.props.isNotebookTrusted}
                         markdown={source}
+                        codeTheme={this.props.codeTheme}
                         testMode={this.props.testMode ? true : false}
                         onChange={this.props.onCodeChange}
                         onCreated={this.onCodeCreated}

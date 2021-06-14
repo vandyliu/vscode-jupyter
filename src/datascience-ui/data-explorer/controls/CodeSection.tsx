@@ -51,6 +51,7 @@ export class CodeSection extends React.Component<IProps, IState> {
                         testMode={false}
                         history={undefined}
                         showWatermark={false}
+                        codeTheme={this.props.monacoTheme}
                         monacoTheme={this.props.monacoTheme}
                         hasFocus={false}
                         cursorPos={0}
