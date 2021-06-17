@@ -184,6 +184,28 @@ export class PythonVariablesRequester implements IKernelVariableRequester {
         };
     }
 
+    public async getDataFrameAsCsv(
+        targetVariable: IJupyterVariable,
+        notebook: INotebook,
+        token?: CancellationToken
+    ): Promise<string> {
+        // Import the data frame script directory if we haven't already
+        await this.importDataFrameScripts(notebook);
+
+        // Then execute a call to get the info and turn it into JSON
+        const results = await notebook.execute(
+            `print(${targetVariable.name}.to_csv(index=False))`,
+            Identifiers.EmptyFileName,
+            0,
+            uuid(),
+            token,
+            true
+        );
+
+        // Combine with the original result (the call only returns the new fields)
+        return this.deserializeJupyterResult(results);
+    }
+
     private async importDataFrameScripts(notebook: INotebook, token?: CancellationToken): Promise<void> {
         const key = notebook.identity.toString();
         if (!this.importedDataFrameScripts.get(key)) {

@@ -1370,6 +1370,11 @@ export interface IKernelVariableRequester {
         expression: string
     ): Promise<IJupyterVariable>;
     getDataFrameColumn?(targetVariable: IJupyterVariable, columnName: string, notebook: INotebook): Promise<{}>;
+    getDataFrameAsCsv?(
+        targetVariable: IJupyterVariable,
+        notebook: INotebook,
+        token?: CancellationToken
+    ): Promise<string>;
 }
 
 export const INotebookCreationTracker = Symbol('INotebookCreationTracker');
