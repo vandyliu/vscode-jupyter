@@ -314,10 +314,16 @@ import { Extensions } from '../../client/common/application/extensions';
 import { NotebookCreator } from '../../client/datascience/notebook/creation/notebookCreator';
 import { CreationOptionService } from '../../client/datascience/notebook/creation/creationOptionsService';
 import { PythonVariablesRequester } from '../../client/datascience/jupyter/pythonVariableRequester';
-import { IDataWrangler, IDataWranglerFactory } from '../../client/datascience/data-viewing/data-wrangler/types';
+import {
+    IDataWrangler,
+    IDataWranglerCommandHandler,
+    IDataWranglerFactory
+} from '../../client/datascience/data-viewing/data-wrangler/types';
 import { DataWrangler } from '../../client/datascience/data-viewing/data-wrangler/dataWrangler';
 import { DataWranglerProvider } from '../../client/datascience/data-viewing/data-wrangler/dataWranglerProvider';
 import { DataWranglerFactory } from '../../client/datascience/data-viewing/data-wrangler/dataWranglerFactory';
+import { StandaloneCommandHandler } from '../../client/datascience/data-viewing/data-wrangler/standaloneCommandHandler';
+import { NotebookCommandHandler } from '../../client/datascience/data-viewing/data-wrangler/notebookCommandHandler';
 
 export class DataScienceIocContainer extends UnitTestIocContainer {
     public get workingInterpreter() {
@@ -736,6 +742,16 @@ export class DataScienceIocContainer extends UnitTestIocContainer {
         this.serviceManager.add<IExtensionSingleActivationService>(
             IExtensionSingleActivationService,
             DataWranglerProvider
+        );
+        this.serviceManager.addSingleton<IDataWranglerCommandHandler>(
+            IDataWranglerCommandHandler,
+            StandaloneCommandHandler,
+            Identifiers.DATA_WRANGLER_STANDALONE_COMMAND_HANDLER
+        );
+        this.serviceManager.addSingleton<IDataWranglerCommandHandler>(
+            IDataWranglerCommandHandler,
+            NotebookCommandHandler,
+            Identifiers.DATA_WRANGLER_NOTEBOOK_COMMAND_HANDLER
         );
 
         // No need of reporting progress.

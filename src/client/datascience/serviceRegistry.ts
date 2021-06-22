@@ -193,9 +193,11 @@ import { NotebookIPyWidgetCoordinator } from './ipywidgets/notebookIPyWidgetCoor
 import { ExtensionRecommendationService } from './extensionRecommendation';
 import { PythonVariablesRequester } from './jupyter/pythonVariableRequester';
 import { DataWranglerProvider } from './data-viewing/data-wrangler/dataWranglerProvider';
-import { IDataWrangler, IDataWranglerFactory } from './data-viewing/data-wrangler/types';
+import { IDataWrangler, IDataWranglerCommandHandler, IDataWranglerFactory } from './data-viewing/data-wrangler/types';
 import { DataWrangler } from './data-viewing/data-wrangler/dataWrangler';
 import { DataWranglerFactory } from './data-viewing/data-wrangler/dataWranglerFactory';
+import { StandaloneCommandHandler } from './data-viewing/data-wrangler/standaloneCommandHandler';
+import { NotebookCommandHandler } from './data-viewing/data-wrangler/notebookCommandHandler';
 
 // README: Did you make sure "dataScienceIocContainer.ts" has also been updated appropriately?
 
@@ -230,6 +232,8 @@ export function registerTypes(serviceManager: IServiceManager, inNotebookApiExpe
     serviceManager.addSingleton<IDataWranglerFactory>(IDataWranglerFactory, DataWranglerFactory);
     serviceManager.addSingleton<IDataWranglerProvider>(IDataWranglerProvider, DataWranglerProvider);
     serviceManager.add<IExtensionSingleActivationService>(IExtensionSingleActivationService, DataWranglerProvider);
+    serviceManager.addSingleton<IDataWranglerCommandHandler>(IDataWranglerCommandHandler, StandaloneCommandHandler, Identifiers.DATA_WRANGLER_STANDALONE_COMMAND_HANDLER);
+    serviceManager.addSingleton<IDataWranglerCommandHandler>(IDataWranglerCommandHandler, NotebookCommandHandler, Identifiers.DATA_WRANGLER_NOTEBOOK_COMMAND_HANDLER);
 
     // This condition is temporary.
     serviceManager.addSingleton<INotebookEditorProvider>(VSCodeNotebookProvider, NotebookEditorProvider);

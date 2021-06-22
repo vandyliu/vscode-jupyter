@@ -55,7 +55,8 @@ import {
     IFillNaRequest,
     IDropDuplicatesRequest,
     IDropNaRequest,
-    OpenDataWranglerSetting
+    OpenDataWranglerSetting,
+    IDataWranglerCommandHandler
 } from './types';
 import { DataScience } from '../../../common/utils/localize';
 import { DataViewer } from '../dataViewer';
@@ -73,6 +74,7 @@ export class DataWrangler extends DataViewer implements IDataWrangler, IDisposab
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (args: any, currentVariableName: string) => Promise<IHistoryItem | void>
     >();
+    private commandHandlers = new Map<OpenDataWranglerSetting, IDataWranglerCommandHandler>();
 
     public get visible() {
         return !!this.webPanel?.isVisible();
@@ -105,7 +107,13 @@ export class DataWrangler extends DataViewer implements IDataWrangler, IDisposab
         private kernelVariableProvider: IJupyterVariables,
         @inject(IJupyterVariableDataProviderFactory)
         private dataProviderFactory: IJupyterVariableDataProviderFactory,
-        @inject(INotebookEditorProvider) private notebookEditorProvider: INotebookEditorProvider
+        @inject(INotebookEditorProvider) private notebookEditorProvider: INotebookEditorProvider,
+        @inject(IDataWranglerCommandHandler)
+        @named(Identifiers.DATA_WRANGLER_NOTEBOOK_COMMAND_HANDLER)
+        notebookCommandHandler: IDataWranglerCommandHandler,
+        @inject(IDataWranglerCommandHandler)
+        @named(Identifiers.DATA_WRANGLER_STANDALONE_COMMAND_HANDLER)
+        standaloneCommandHandler: IDataWranglerCommandHandler
     ) {
         super(
             configuration,
@@ -123,6 +131,8 @@ export class DataWrangler extends DataViewer implements IDataWrangler, IDisposab
             ViewColumn.Two
         );
         this.onDidDispose(this.dataWranglerDisposed, this);
+        this.commandHandlers.set(OpenDataWranglerSetting.STANDALONE, standaloneCommandHandler);
+        this.commandHandlers.set(OpenDataWranglerSetting.WITH_JUPYTER_NOTEBOOK, notebookCommandHandler);
 
         this.commands.set(DataWranglerCommands.Describe, this.getColumnStats.bind(this));
         // this.commands.set(DataWranglerCommands.ExportToCsv, this);

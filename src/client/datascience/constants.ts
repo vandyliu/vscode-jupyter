@@ -644,6 +644,8 @@ export namespace Identifiers {
     export const REMOTE_URI = 'https://remote/';
     export const REMOTE_URI_ID_PARAM = 'id';
     export const REMOTE_URI_HANDLE_PARAM = 'uriHandle';
+    export const DATA_WRANGLER_NOTEBOOK_COMMAND_HANDLER = 'DATA_WRANGLER_NOTEBOOK_COMMAND_HANDLER';
+    export const DATA_WRANGLER_STANDALONE_COMMAND_HANDLER = 'DATA_WRANGLER_STANDALONE_COMMAND_HANDLER';
 }
 
 export namespace CodeSnippets {

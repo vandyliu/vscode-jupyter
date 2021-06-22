@@ -16,6 +16,8 @@ import { ConfigurationService } from '../../../client/common/configuration/servi
 import { IConfigurationService } from '../../../client/common/types';
 import { CodeCssGenerator } from '../../../client/datascience/codeCssGenerator';
 import { DataWrangler } from '../../../client/datascience/data-viewing/data-wrangler/dataWrangler';
+import { NotebookCommandHandler } from '../../../client/datascience/data-viewing/data-wrangler/notebookCommandHandler';
+import { StandaloneCommandHandler } from '../../../client/datascience/data-viewing/data-wrangler/standaloneCommandHandler';
 import { IDataWrangler } from '../../../client/datascience/data-viewing/data-wrangler/types';
 import { JupyterVariableDataProvider } from '../../../client/datascience/data-viewing/jupyterVariableDataProvider';
 import { JupyterVariableDataProviderFactory } from '../../../client/datascience/data-viewing/jupyterVariableDataProviderFactory';
@@ -39,6 +41,8 @@ suite('DataScience - DataWrangler', () => {
     let jupyterVariables: KernelVariables;
     let dataProviderFactory: JupyterVariableDataProviderFactory;
     let notebookEditorProvider: NotebookEditorProvider;
+    let standaloneCommandHandler: StandaloneCommandHandler;
+    let notebookCommandHandler: NotebookCommandHandler;
 
     const title: string = 'Data Wrangler - Title';
 
@@ -54,6 +58,8 @@ suite('DataScience - DataWrangler', () => {
         jupyterVariables = mock(KernelVariables);
         dataProviderFactory = mock(JupyterVariableDataProviderFactory);
         notebookEditorProvider = mock(NotebookEditorProvider);
+        standaloneCommandHandler = mock(StandaloneCommandHandler);
+        notebookCommandHandler = mock(NotebookCommandHandler);
         const documentManager = mock(DocumentManager);
         const settings = mock(JupyterSettings);
         const settingsChangedEvent = new EventEmitter<void>();
@@ -79,7 +85,9 @@ suite('DataScience - DataWrangler', () => {
             instance(documentManager),
             instance(jupyterVariables),
             instance(dataProviderFactory),
-            instance(notebookEditorProvider)
+            instance(notebookEditorProvider),
+            instance(standaloneCommandHandler),
+            instance(notebookCommandHandler)
         );
     });
     test('Data Wrangler showData calls gets dataFrame info from data provider', async () => {

@@ -4,6 +4,7 @@
 
 import { Event, WebviewPanel } from 'vscode';
 import { IDisposable } from '../../../common/types';
+import { INotebook } from '../../types';
 import { IDataViewerDataProvider } from '../types';
 
 export enum OpenDataWranglerSetting {
@@ -82,4 +83,20 @@ export interface INormalizeColumnRequest {
 
 export interface IFillNaRequest {
     newValue: string | Number;
+}
+
+export const IDataWranglerCommandHandler = Symbol('IDataWranglerCommandHandler');
+export interface IDataWranglerCommandHandler {
+    updateWrangler(
+        code: string,
+        notebook: INotebook | undefined,
+        existingDisposable: IDisposable | undefined,
+        refreshRequired?: boolean
+    ): Promise<IUpdateWranglerRes>;
+    executeCellAfterVariableUpdate?(): Promise<void>;
+}
+
+export interface IUpdateWranglerRes {
+    shouldWranglerUpdateVar: boolean;
+    newDisposable?: IDisposable;
 }
