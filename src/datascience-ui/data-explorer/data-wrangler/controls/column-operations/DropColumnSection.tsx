@@ -23,7 +23,6 @@ export class DropColumnsSection extends React.Component<IProps, IState> {
                                 targetColumns: this.props.selectedColumns
                             } as IDropRequest
                         });
-                        // Clear ourselves after dropping columns
                         this.props.setColumns([]);
                     }}
                     style={buttonStyle}
