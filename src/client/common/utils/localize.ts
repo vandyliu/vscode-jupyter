@@ -1062,7 +1062,7 @@ export namespace DataScience {
         "import pandas as pd\r\ndf = pd.read_csv(r'{0}')\n"
     );
     export const dataWranglerImportTransformation = localize(
-        'DataScience.DataWranglerImportTransformation',
+        'DataScience.dataWranglerImportTransformation',
         'Imported data'
     );
     export const dataWranglerStandalone = localize('DataScience.dataWranglerStandalone', 'Open just the Data Wrangler');
