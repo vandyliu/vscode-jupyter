@@ -3,11 +3,7 @@ import { ISlickRow } from '../reactSlickGrid';
 
 import './sliceControl.css';
 import { IGetColsResponse } from '../../../client/datascience/data-viewing/types';
-import { HistorySection } from './controls/HistorySection';
-import { SummarySection } from './controls/SummarySection';
 import { ColumnsSection } from './controls/ColumnsSection';
-import { RowsSection } from './controls/RowsSection';
-import { CodeSection } from './controls/CodeSection';
 import { IHistoryItem } from '../../../client/datascience/data-viewing/data-wrangler/types';
 
 interface IControlPanelProps {
@@ -41,38 +37,11 @@ export class ControlPanel extends React.Component<IControlPanelProps> {
                     backgroundColor: 'var(--vscode-sideBar-background)'
                 }}
             >
-                <SummarySection
-                    collapsed={false}
-                    histogramData={this.props.histogramData}
-                    submitCommand={this.props.submitCommand}
-                    resizeEvent={this.props.resizeEvent}
-                    headers={this.props.headers}
-                />
                 <ColumnsSection
                     collapsed={true}
                     submitCommand={this.props.submitCommand}
                     options={columnDropdownOptions}
                     headers={this.props.headers}
-                />
-                <RowsSection
-                    collapsed={true}
-                    submitCommand={this.props.submitCommand}
-                    options={columnDropdownOptions}
-                    headers={this.props.headers}
-                />
-                <HistorySection
-                    collapsed={false}
-                    historyList={this.props.historyList}
-                    currentVariableName={this.props.currentVariableName}
-                    submitCommand={this.props.submitCommand}
-                    headers={this.props.headers}
-                />
-                <CodeSection
-                    collapsed={false}
-                    code={this.props.historyList.map((item) => item.code).join('')}
-                    monacoTheme={this.props.monacoTheme}
-                    currentVariableName={this.props.currentVariableName}
-                    submitCommand={this.props.submitCommand}
                 />
             </div>
         );
