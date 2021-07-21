@@ -41,7 +41,7 @@ import { ISlickGridProps, ISlickGridSlice, ISlickRow, ReactSlickGrid } from '../
 import {
     DataWranglerCommands,
     ICellCssStylesHash,
-    IDescribeColReq,
+    IDescribeColRequest,
     IDropDuplicatesRequest,
     IDropNaRequest,
     IDropRequest,
@@ -597,7 +597,7 @@ export class DataWranglerReactSlickGrid extends ReactSlickGrid {
         // Tell summary panel which column summary to display
         this.props.submitCommand!({
             command: DataWranglerCommands.Describe,
-            args: { targetColumn: primarySelectedColumn } as IDescribeColReq
+            args: { targetColumn: primarySelectedColumn } as IDescribeColRequest
         });
 
         this.setState(

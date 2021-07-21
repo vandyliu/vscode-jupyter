@@ -61,10 +61,40 @@ export interface IDataWrangler extends IDisposable {
     removeLatestHistoryItem(): Promise<void>;
 }
 
+export type DataWranglerCommandArgs<T extends DataWranglerCommands> = T extends DataWranglerCommands.RenameColumn
+    ? IRenameColumnsRequest
+    : T extends DataWranglerCommands.Drop
+    ? IDropRequest
+    : T extends DataWranglerCommands.DropDuplicates
+    ? IDropDuplicatesRequest
+    : T extends DataWranglerCommands.DropNa
+    ? IDropNaRequest
+    : T extends DataWranglerCommands.NormalizeColumn
+    ? INormalizeColumnRequest
+    : T extends DataWranglerCommands.FillNa
+    ? IFillNaRequest
+    : T extends DataWranglerCommands.Describe
+    ? IDescribeColRequest
+    : T extends DataWranglerCommands.GetHistoryItem
+    ? IGetHistoryItemRequest
+    : T extends DataWranglerCommands.CoerceColumn
+    ? ICoerceColumnRequest
+    : T extends DataWranglerCommands.ReplaceAllColumn
+    ? IReplaceAllColumnsRequest
+    : T extends DataWranglerCommands.RemoveHistoryItem
+    ? IRemoveHistoryItemRequest
+    : T extends DataWranglerCommands.RespondToPreview
+    ? IRespondToPreviewRequest // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    : any;
+
 export interface ICellCssStylesHash {
     [index: number]: {
         [id: number]: string;
     };
+}
+
+export interface IRespondToPreviewRequest {
+    doesAccept: boolean;
 }
 
 export interface IRemoveHistoryItemRequest {
@@ -82,7 +112,7 @@ export interface IHistoryItem {
     columnsToShow?: string[];
 }
 
-export interface IGetHistoryItem {
+export interface IGetHistoryItemRequest {
     index: number;
 }
 export interface IRenameColumnsRequest {
@@ -90,11 +120,11 @@ export interface IRenameColumnsRequest {
     newColumnName: string;
 }
 
-export interface IDescribeColReq {
+export interface IDescribeColRequest {
     targetColumn: string | undefined;
 }
 
-export interface IGetColumnStatsReq {
+export interface IGetColumnStatsRequest {
     targetColumn: string;
 }
 
