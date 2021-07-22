@@ -51,7 +51,7 @@ export const styles = mergeStyleSets({
             display: 'flex',
             paddingLeft: 10,
             paddingRight: 0,
-            height: 26
+            minHeight: 26
         }
     ]
 });
