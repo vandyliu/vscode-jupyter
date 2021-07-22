@@ -11,16 +11,15 @@ import {
     ProgressLocation
 } from 'vscode';
 import { IExtensionSingleActivationService } from '../../../activation/types';
-import { IApplicationShell, ICommandManager, IDataWranglerProvider } from '../../../common/application/types';
+import { IApplicationShell, IDataWranglerProvider } from '../../../common/application/types';
 import * as uuid from 'uuid/v4';
 import { Identifiers } from '../../constants';
 import { INotebookProvider, IJupyterVariables, IJupyterVariableDataProviderFactory } from '../../types';
 import { DataViewerChecker } from '../../interactive-common/dataViewerChecker';
-import { IConfigurationService, IExperimentService } from '../../../common/types';
+import { IConfigurationService } from '../../../common/types';
 import { IDataWranglerFactory } from './types';
 import { DataScience } from '../../../common/utils/localize';
 import { IDataViewerDataProvider } from '../types';
-import { Experiments } from '../../../common/experiments/groups';
 
 // Activates the Jupyter extension.
 // Does the work before the Data Wrangler loads like activating the custom editor,
@@ -44,9 +43,7 @@ export class DataWranglerProvider implements IDataWranglerProvider, IExtensionSi
         @named(Identifiers.KERNEL_VARIABLES)
         private kernelVariableProvider: IJupyterVariables,
         @inject(IConfigurationService) configService: IConfigurationService,
-        @inject(IApplicationShell) private appShell: IApplicationShell,
-        @inject(ICommandManager) private commandManager: ICommandManager,
-        @inject(IExperimentService) private experimentService: IExperimentService
+        @inject(IApplicationShell) private appShell: IApplicationShell
     ) {
         this.dataViewerChecker = new DataViewerChecker(configService, appShell);
     }
@@ -64,13 +61,6 @@ export class DataWranglerProvider implements IDataWranglerProvider, IExtensionSi
     public async open(): Promise<void> {
         const filtersObject: { [name: string]: string[] } = {};
         filtersObject['Data Wrangler'] = ['csv'];
-
-        const isDataWranglerEnabled = await this.experimentService.inExperiment(Experiments.DataWrangler);
-        if (!isDataWranglerEnabled) {
-            await this.appShell.showErrorMessage(DataScience.dataWranglerExperimentDisabledError());
-            await this.commandManager.executeCommand('workbench.action.closeActiveEditor');
-            return;
-        }
 
         const uris = await this.appShell.showOpenDialog({
             canSelectMany: false,
@@ -114,13 +104,6 @@ export class DataWranglerProvider implements IDataWranglerProvider, IExtensionSi
             cancellable: true,
             title: DataScience.dataWranglerStandaloneLoading()
         };
-
-        const isDataWranglerEnabled = await this.experimentService.inExperiment(Experiments.DataWrangler);
-        if (!isDataWranglerEnabled) {
-            await this.appShell.showErrorMessage(DataScience.dataWranglerExperimentDisabledError());
-            await this.commandManager.executeCommand('workbench.action.closeActiveEditor');
-            return;
-        }
 
         await this.appShell.withProgress(options, async (_, __) => this.importAndLaunchDataWrangler(file, source));
     }
