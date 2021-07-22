@@ -82,7 +82,7 @@ const STYLING_OPERATIONS = [
     'Selected rows'
 ];
 const PREVIEW_TITLE = '(preview)';
-const INDEX_COLUMN_ID = '1';
+const INDEX_COLUMN_ID = '0';
 
 export class DataWranglerReactSlickGrid extends ReactSlickGrid {
     private contextMenuRowId: number | undefined;
@@ -452,11 +452,7 @@ export class DataWranglerReactSlickGrid extends ReactSlickGrid {
         this.contextMenuColumnName = data.column.field;
 
         // Don't show context menu for the row numbering column or index column or preview columns
-        if (
-            data.column.id === '0' ||
-            data.column.id === INDEX_COLUMN_ID ||
-            data.column.field?.includes(PREVIEW_TITLE)
-        ) {
+        if (data.column.id === INDEX_COLUMN_ID || data.column.field?.includes(PREVIEW_TITLE)) {
             return;
         }
         e.preventDefault();
@@ -512,12 +508,7 @@ export class DataWranglerReactSlickGrid extends ReactSlickGrid {
         const selectedColumnId = data.column.id;
 
         // Disallow selection for the row numbering column or index column or preview columns
-        if (
-            !selectedColumnId ||
-            selectedColumnId === '0' ||
-            selectedColumnId === INDEX_COLUMN_ID ||
-            data.column.field?.includes(PREVIEW_TITLE)
-        ) {
+        if (!selectedColumnId || selectedColumnId === INDEX_COLUMN_ID || data.column.field?.includes(PREVIEW_TITLE)) {
             return;
         }
 
@@ -704,20 +695,6 @@ export class DataWranglerReactSlickGrid extends ReactSlickGrid {
                     buttons: []
                 };
 
-                // First column (that has the filter button)
-                if (c.field === this.props.idProperty) {
-                    c.width = maxFieldWidth / 2;
-                    c.name = '';
-                    c.header.buttons.push({
-                        cssClass: 'codicon codicon-filter codicon-button header-cell-button',
-                        handler: this.clickFilterButton,
-                        tooltip: this.state.showingFilters
-                            ? getLocString('DataScience.dataViewerHideFilters', 'Hide filters')
-                            : getLocString('DataScience.dataViewerShowFilters', 'Show filters')
-                    });
-                    return;
-                }
-
                 const {
                     columnId: currentSortColId,
                     sortAsc: currentSortAsc
@@ -730,8 +707,28 @@ export class DataWranglerReactSlickGrid extends ReactSlickGrid {
                         : getLocString('Common.sortAsc', 'Sort Ascending');
 
                 c.width = maxFieldWidth;
-
-                if (c.field?.includes(PREVIEW_TITLE)) {
+                // First column: index that has the filter button
+                if (c.field === 'index') {
+                    c.width = maxFieldWidth;
+                    c.name = c.field;
+                    c.header.buttons.push(
+                        {
+                            cssClass: 'codicon codicon-filter codicon-button',
+                            handler: this.clickFilterButton,
+                            tooltip: this.state.showingFilters
+                                ? getLocString('DataScience.dataViewerHideFilters', 'Hide filters')
+                                : getLocString('DataScience.dataViewerShowFilters', 'Show filters')
+                        },
+                        {
+                            cssClass: `codicon codicon-button show-on-hover-child codicon-sort ${sortGlyphClass}`,
+                            handler: () => {
+                                this.sortColumnFromHeader(c.id);
+                            },
+                            tooltip: sortTooltip
+                        },
+                    );
+                    return;
+                } else if (c.field?.includes(PREVIEW_TITLE)) {
                     // Preview column
                     c.name = `+ ${c.field}`;
                     c.header.buttons.push(

@@ -4,6 +4,7 @@
     cursor: ew-resize !important;
     width: 5px !important;
     z-index: 99999 !important;
+    left: 1px !important;
 }
 
 .resizable-span-horizontal {
@@ -171,13 +172,13 @@
 }
 
 .react-grid-cell-selected {
-    background-color: var(--vscode-list-activeSelectionBackground);
-    color: var(--vscode-list-activeSelectionForeground);
+    background-color: var(--vscode-list-activeSelectionBackground) !important;
+    color: var(--vscode-list-activeSelectionForeground) !important;
 }
 
 .react-grid-row-cell-selected {
-    background-color: var(--vscode-list-activeSelectionBackground);
-    color: var(--vscode-list-activeSelectionForeground);
+    background-color: var(--vscode-list-activeSelectionBackground) !important;
+    color: var(--vscode-list-activeSelectionForeground) !important;
 }
 
 .slick-row:hover:not(.selected-row) > .react-grid-cell {

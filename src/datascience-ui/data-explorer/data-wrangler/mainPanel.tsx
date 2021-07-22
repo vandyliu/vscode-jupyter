@@ -521,28 +521,29 @@ export class MainPanel extends React.Component<IMainPanelProps, IMainPanelState>
 
     private generateColumns(variable: IDataFrameInfo): Slick.Column<Slick.SlickData>[] {
         if (variable.columns) {
-            // Generate a column for row numbers
-            const rowNumberColumn = {
-                key: RowNumberColumnName,
-                type: ColumnType.Number
-            } as IDataFrameColumnInfo;
-            const columns = [rowNumberColumn].concat(variable.columns);
-            return columns.reduce((accum: Slick.Column<Slick.SlickData>[], c: IDataFrameColumnInfo, i: number) => {
-                // Only show index column for pandas DataFrame and Series
-                if (variable?.type === 'DataFrame' || variable?.type === 'Series' || c.key !== this.state.indexColumn) {
-                    accum.push({
-                        type: c.type,
-                        field: c.key.toString(),
-                        id: `${i}`,
-                        name: c.key === RowNumberColumnName ? '' : c.key.toString(),
-                        sortable: true,
-                        toolTip: c.key.toString(),
-                        formatter: cellFormatterFunc,
-                        isPreview: c.key.includes(' (preview)')
-                    } as Slick.Column<Slick.SlickData>);
-                }
-                return accum;
-            }, []);
+            return variable.columns.reduce(
+                (accum: Slick.Column<Slick.SlickData>[], c: IDataFrameColumnInfo, i: number) => {
+                    // Only show index column for pandas DataFrame and Series
+                    if (
+                        variable?.type === 'DataFrame' ||
+                        variable?.type === 'Series' ||
+                        c.key !== this.state.indexColumn
+                    ) {
+                        accum.push({
+                            type: c.type,
+                            field: c.key.toString(),
+                            id: `${i}`,
+                            name: c.key === RowNumberColumnName ? '' : c.key.toString(),
+                            sortable: true,
+                            toolTip: c.key.toString(),
+                            formatter: cellFormatterFunc,
+                            isPreview: c.key.includes(' (preview)')
+                        } as Slick.Column<Slick.SlickData>);
+                    }
+                    return accum;
+                },
+                []
+            );
         }
         return [];
     }

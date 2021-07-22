@@ -23,6 +23,13 @@
     padding-bottom: 1px;
 }
 
+.slice-summary {
+    display: flex;
+    flex-direction: row;
+    cursor: pointer;
+    padding-left: 5px;
+}
+
 .slice-summary-detail {
     font-size: 11px;
     margin: 0;

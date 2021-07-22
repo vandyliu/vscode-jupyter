@@ -288,9 +288,8 @@ def _VSCODE_getDataFrameInfo(df):
             for row in rows:
                 if row not in target["previewDiffs"]:
                     target["previewDiffs"][row] = {}
-                # Need to increment by 1 because we add a new column in the slick grid
-                target["previewDiffs"][row][n] = "react-grid-cell-before-diff"
-                target["previewDiffs"][row][n + 1] = "react-grid-cell-preview-diff"
+                target["previewDiffs"][row][n - 1] = "react-grid-cell-before-diff"
+                target["previewDiffs"][row][n] = "react-grid-cell-preview-diff"
 
     # Save this in our target
     target["columns"] = columns
