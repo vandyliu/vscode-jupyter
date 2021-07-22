@@ -517,8 +517,10 @@ export class DataWrangler extends DataViewer implements IDataWrangler, IDisposab
             const rows = req.rowIndices.join(', ');
             const code =
                 req.rowIndices.length === 1
-                    ? this.createCode([`${newVar} = ${currVar}.drop(index=${req.rowIndices[0]})`])
-                    : this.createCode([`${newVar} = ${currVar}.drop(index=[${rows}])`]);
+                    ? this.createCode([
+                          `${newVar} = ${currVar}.drop(index=${req.rowIndices[0]}).reset_index(drop=True)`
+                      ])
+                    : this.createCode([`${newVar} = ${currVar}.drop(index=[${rows}]).reset_index(drop=True)`]);
             const historyItem = {
                 type: DataWranglerCommands.Drop,
                 description: DataScience.dataWranglerDropRowDescription().format(rows),
@@ -530,7 +532,9 @@ export class DataWrangler extends DataViewer implements IDataWrangler, IDisposab
         } else if (req.targetColumns) {
             // Drop columns by column name
             const targetColumns = this.generateStringListOfColumns(req.targetColumns);
-            const code = this.createCode([`${newVar} = ${currVar}.drop(columns=[${targetColumns}])`]);
+            const code = this.createCode([
+                `${newVar} = ${currVar}.drop(columns=[${targetColumns}]).reset_index(drop=True)`
+            ]);
             const historyItem = {
                 type: DataWranglerCommands.Drop,
                 description: DataScience.dataWranglerDropColumnDescription().format(targetColumns),

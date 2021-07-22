@@ -1117,6 +1117,7 @@ export namespace DataScience {
     export const dataWranglerFillNa = localize('DataScience.dataWranglerFillNa', 'Replace Missing Values');
     export const dataWranglerCoerce = localize('DataScience.dataWranglerCoerce', 'Coerce');
     export const dataWranglerReplaceAll = localize('DataScience.dataWranglerReplaceAll', 'Replace All');
+    export const dataWranglerType = localize('DataScience.dataWranglerType', ' Type');
     export const dataWranglerNewType = localize('DataScience.dataWranglerNewType', 'New Type');
     export const dataWranglerNewValue = localize('DataScience.dataWranglerNewValue', 'New Value');
     export const dataWranglerOldValue = localize('DataScience.dataWranglerOldValue', 'Old Value');
