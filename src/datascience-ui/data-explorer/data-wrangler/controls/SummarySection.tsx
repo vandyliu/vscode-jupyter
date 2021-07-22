@@ -75,7 +75,7 @@ const Plot = createPlotlyComponent(Plotly);
 class SummaryRow extends React.Component<ISummaryRowProps> {
     render() {
         return (
-            <div className={`summaryRow ${this.props.child ? "summaryChildRow" : ""}`}>
+            <div className={`summaryRow ${this.props.child ? 'summaryChildRow' : ''}`}>
                 <span>{this.props.name}</span>
                 <span className="summaryValue">{this.props.value}</span>
             </div>
@@ -86,10 +86,10 @@ class SummaryRow extends React.Component<ISummaryRowProps> {
 class SummaryRowDetails extends React.Component<ISummaryRowDetailsProps> {
     render() {
         return (
-            <details className="slicing-control" style={{marginLeft: '-10px'}} open>
+            <details className="slicing-control" style={{ marginLeft: '-10px' }} open>
                 <summary className="summaryRowDetails summaryRow">
                     <div style={{ display: 'inline-flex', flexGrow: 1, justifyContent: 'space-between' }}>
-                        <span style={{paddingLeft: '3px'}}>{this.props.name}</span>
+                        <span style={{ paddingLeft: '3px' }}>{this.props.name}</span>
                         <span className="summaryValue">{this.props.value}</span>
                     </div>
                 </summary>
@@ -103,7 +103,7 @@ class SummaryRowDetails extends React.Component<ISummaryRowDetailsProps> {
 class SummaryTitle extends React.Component<ISummaryTitleProps> {
     render() {
         return (
-            <div className="summaryRow" >
+            <div className="summaryRow">
                 <span style={{ fontWeight: 'bold' }}>Column: {this.props.name}</span>
                 {this.props.canClose && (
                     <div
@@ -122,13 +122,16 @@ class SummaryTitle extends React.Component<ISummaryTitleProps> {
 
 class InnerRows extends React.Component<IInnerRowsProps> {
     render() {
-        return (
-            <div className="summaryInnerRow">
-                {this.props.children.map((c) => (
-                    <SummaryRow key={c.name} child={true} name={c.name} value={c.value} />
-                ))}
-            </div>
-        );
+        if (this.props.children.length > 0) {
+            return (
+                <div className="summaryInnerRow">
+                    {this.props.children.map((c) => (
+                        <SummaryRow key={c.name} child={true} name={c.name} value={c.value} />
+                    ))}
+                </div>
+            );
+        }
+        return <></>;
     }
 }
 
@@ -143,6 +146,10 @@ class ColumnSummary extends React.Component<IDataframeColumnSummaryProps> {
                     name={this.props.columnSummary.key}
                     canClose={true}
                     showDefaultSummary={this.props.showDefaultSummary}
+                />
+                <SummaryRow
+                    name={getLocString('DataScience.dataWranglerDataFrameType', 'Type')}
+                    value={this.props.columnSummary.type}
                 />
                 <SummaryRow
                     name={getLocString('DataScience.dataWranglerDataFrameShape', 'Data frame shape')}
@@ -238,6 +245,24 @@ class DataframeSummary extends React.Component<IDataFrameInfo> {
         return resultCols;
     }
 
+    private getMissingValuesComponent() {
+        const cols = this.getColumnsWithMissingValues(this.props.columns ?? []);
+        if (cols.length > 0) {
+            return (
+                <SummaryRowDetails
+                    name={getLocString('DataScience.dataWranglerMissingValues', 'Missing values')}
+                    value={this.props.nanRows?.length}
+                    children={this.getColumnsWithMissingValues(this.props.columns ?? [])}
+                />
+            );
+        } else {
+            <SummaryRow
+                name={getLocString('DataScience.dataWranglerMissingValues', 'Missing values')}
+                value={this.props.nanRows?.length}
+            />;
+        }
+    }
+
     render() {
         return (
             <div>
@@ -274,11 +299,7 @@ class DataframeSummary extends React.Component<IDataFrameInfo> {
                         }
                     ]}
                 />
-                <SummaryRowDetails
-                    name={getLocString('DataScience.dataWranglerMissingValues', 'Missing values')}
-                    value={this.props.nanRows?.length}
-                    children={this.getColumnsWithMissingValues(this.props.columns ?? [])}
-                />
+                {this.getMissingValuesComponent()}
             </div>
         );
     }
