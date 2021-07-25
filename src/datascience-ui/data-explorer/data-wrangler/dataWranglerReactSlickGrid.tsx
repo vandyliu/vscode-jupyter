@@ -145,7 +145,6 @@ export class DataWranglerReactSlickGrid extends ReactSlickGrid {
 
             this.dataView.onRowCountChanged.subscribe((_e, _args) => {
                 grid.updateRowCount();
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 this.changeCellStylings(grid);
                 grid.render();
                 grid.setSortColumn(INDEX_COLUMN_ID, true);
@@ -154,7 +153,6 @@ export class DataWranglerReactSlickGrid extends ReactSlickGrid {
 
             this.dataView.onRowsChanged.subscribe((_e, args) => {
                 grid.invalidateRows(args.rows);
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 grid.render();
                 grid.setSortColumn(INDEX_COLUMN_ID, true);
                 setSortGlyphs(grid);
@@ -218,7 +216,9 @@ export class DataWranglerReactSlickGrid extends ReactSlickGrid {
                         if (this.props.submitCommand) {
                             this.props.submitCommand({
                                 command: DataWranglerCommands.Drop,
-                                args: { rowIndices: this.state.selectedRows } as IDropRequest
+                                args: {
+                                    rowIndices: this.getDataFrameIndicesFromCells(this.state.selectedRows ?? [])
+                                } as IDropRequest
                             });
                             return this.resetSelections();
                         }
@@ -480,12 +480,11 @@ export class DataWranglerReactSlickGrid extends ReactSlickGrid {
         if (!cell) {
             return;
         }
-
         // Also select on context menu (right click) events
         if (!this.state.selectedRows?.includes(cell.row)) {
             this.setSelectedRows([cell.row], cell.row);
         }
-
+        console.log(cell, 'cell');
         this.contextMenuRowId = cell.row;
         this.contextMenuCellId = cell.cell;
         e.preventDefault();
@@ -499,6 +498,22 @@ export class DataWranglerReactSlickGrid extends ReactSlickGrid {
             this.contextMenuRowId = undefined;
         });
     };
+
+    /**
+     * If we drop rows, then the indices in the dataframe and the grid don't match
+     * This function is so when we send over rows to drop to dataWrangler.ts
+     * Then it drops the correct indices in the dataframe.
+     */
+    //
+    private getDataFrameIndicesFromCells(rows: number[]) {
+        if (rows) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const indices = rows.map((row) => (this.state.grid?.getDataItem(row) as any).index);
+            console.log('indices', indices);
+            return indices;
+        }
+        return [];
+    }
 
     /**
      * Header click handler, handles column selection
@@ -725,7 +740,7 @@ export class DataWranglerReactSlickGrid extends ReactSlickGrid {
                                 this.sortColumnFromHeader(c.id);
                             },
                             tooltip: sortTooltip
-                        },
+                        }
                     );
                     return;
                 } else if (c.field?.includes(PREVIEW_TITLE)) {

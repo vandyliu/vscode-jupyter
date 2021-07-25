@@ -18,6 +18,8 @@ class NumpyEncoder(_VSCODE_json.JSONEncoder):
             return float(obj)
         elif isinstance(obj, _VSCODE_np.ndarray):
             return obj.tolist()
+        elif isinstance(obj, _VSCODE_np.bool_):
+            return bool(obj)
         return _VSCODE_json.JSONEncoder.default(self, obj)
 
 
@@ -169,6 +171,16 @@ def _VSCODE_getDataFrameRows(df, start, end):
     return _VSCODE_pd_json.to_json(None, df, orient="table", date_format="iso")
 
 
+def get_col(df, column_name):
+    try:
+        col = df[column_name]
+        return col
+    # Columns don't have names, so get column with index
+    except KeyError:
+        col = df[int(column_name)]
+        return col
+
+
 # Function to retrieve a set of rows for a data frame
 def _VSCODE_getDataFrameColumn(df, columnName):
     if columnName not in df:
@@ -185,20 +197,11 @@ def _VSCODE_getDataFrameColumn(df, columnName):
         )
     except:
         pass
-    return df[columnName].tolist()
+    return get_col(df, columnName).tolist()
 
 
 # Function to get info on the passed in data frame
 def _VSCODE_getDataFrameInfo(df):
-    def get_col(df, column_name):
-        try:
-            col = df[column_name]
-            return col
-        # Columns don't have names, so get column with index
-        except KeyError:
-            col = df[int(column_name)]
-            return col
-
     df = _VSCODE_convertToDataFrame(df)
     rowCount = _VSCODE_getRowCount(df)
 

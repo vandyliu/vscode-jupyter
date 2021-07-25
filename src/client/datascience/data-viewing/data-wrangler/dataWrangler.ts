@@ -22,6 +22,7 @@ import { GLOBAL_MEMENTO, IConfigurationService, IDisposable, IMemento } from '..
 import * as localize from '../../../common/utils/localize';
 import { Commands, Identifiers } from '../../constants';
 import {
+    ICell,
     ICodeCssGenerator,
     IJupyterVariableDataProvider,
     IJupyterVariableDataProviderFactory,
@@ -56,6 +57,7 @@ import {
 } from './types';
 import { DataScience } from '../../../common/utils/localize';
 import { DataViewer } from '../dataViewer';
+import { nbformat } from '@jupyterlab/coreutils';
 
 // Where in the VS Code screen to have the data wrangler opened up
 const PREFERRED_VIEWGROUP = 'JupyterDataWranglerPreferredViewColumn';
@@ -325,7 +327,10 @@ export class DataWrangler extends DataViewer implements IDataWrangler, IDisposab
 
         // Execute python command
         if (codeToRun !== undefined && notebook !== undefined) {
-            await this.executeNotebookCode(notebook, codeToRun);
+            const codeErrored = await this.executeNotebookCode(notebook, codeToRun);
+            if (codeErrored) {
+                return;
+            }
             if (this.existingDisposable) {
                 this.existingDisposable.dispose();
             }
@@ -415,11 +420,9 @@ export class DataWrangler extends DataViewer implements IDataWrangler, IDisposab
         const currVar = vars.currentVariableName;
         const newVar = vars.newVariableName;
 
+        const oldValue = this.getValueBasedOnType(req.oldValue, req.oldValueType);
+        const newValue = this.getValueBasedOnType(req.newValue, req.newValueType);
         const targetColumns = this.generateStringListOfColumns(req.targetColumns);
-
-        // Find type of each column
-        // It is necessary so we replace the values in the columns with the correct column type
-        const { stringColumns, boolNumColumns } = await this.splitColumnTypes(req.targetColumns);
 
         // Make a copy of dataframe
         const setupCode = `${newVar} = ${currVar}.copy()`;
@@ -428,43 +431,20 @@ export class DataWrangler extends DataViewer implements IDataWrangler, IDisposab
         const codeList: string[] = [];
 
         // Replace columns that have type string
-        if (stringColumns.length > 0) {
-            const strCols = this.generateStringListOfColumns(stringColumns);
-            codeList.push(
-                `${newVar}[[${strCols}]] = ${newVar}[[${strCols}]].replace(to_replace='${req.oldValue}', value='${req.newValue}')`
-            );
+        codeList.push(
+            `${newVar}[[${targetColumns}]] = ${newVar}[[${targetColumns}]].replace(to_replace=${oldValue}, value=${newValue})`
+        );
 
-            if (req.isPreview) {
-                // Need to go through each column and create a preview column for each of those columns and add it beside the original column
-                stringColumns.forEach((col) => {
-                    const singleColumnPreviewCodeList = this.generatePreviewCodeList(
-                        newVar,
-                        col,
-                        `${newVar}[['${col}']].replace(to_replace='${req.oldValue}', value='${req.newValue}')`
-                    );
-                    previewCodeList.push(...singleColumnPreviewCodeList);
-                });
-            }
-        }
-
-        // Replace columns that have type boolean or number
-        if (boolNumColumns.length > 0) {
-            const boolNumCols = this.generateStringListOfColumns(boolNumColumns);
-            codeList.push(
-                `${newVar}[[${boolNumCols}]] = ${newVar}[[${boolNumCols}]].replace(to_replace=${req.oldValue}, value=${req.newValue})`
-            );
-
-            if (req.isPreview) {
-                // Need to go through each column and create a preview column for each of those columns and add it beside the original column
-                boolNumColumns.forEach((col) => {
-                    const singleColumnPreviewCodeList = this.generatePreviewCodeList(
-                        newVar,
-                        col,
-                        `${newVar}[['${col}']].replace(to_replace=${req.oldValue}, value=${req.newValue})`
-                    );
-                    previewCodeList.push(...singleColumnPreviewCodeList);
-                });
-            }
+        if (req.isPreview) {
+            // Need to go through each column and create a preview column for each of those columns and add it beside the original column
+            req.targetColumns.forEach((col) => {
+                const singleColumnPreviewCodeList = this.generatePreviewCodeList(
+                    newVar,
+                    col,
+                    `${newVar}[['${col}']].replace(to_replace=${oldValue}, value=${newValue})`
+                );
+                previewCodeList.push(...singleColumnPreviewCodeList);
+            });
         }
 
         // Create preview code
@@ -475,11 +455,7 @@ export class DataWrangler extends DataViewer implements IDataWrangler, IDisposab
 
         const historyItem = {
             type: DataWranglerCommands.ReplaceAllColumn,
-            description: DataScience.dataWranglerReplaceAllDescription().format(
-                req.oldValue as string,
-                req.newValue as string,
-                targetColumns
-            ),
+            description: DataScience.dataWranglerReplaceAllDescription().format(oldValue, newValue, targetColumns),
             variableName: newVar,
             code: code,
             previewCode: previewCode,
@@ -517,10 +493,8 @@ export class DataWrangler extends DataViewer implements IDataWrangler, IDisposab
             const rows = req.rowIndices.join(', ');
             const code =
                 req.rowIndices.length === 1
-                    ? this.createCode([
-                          `${newVar} = ${currVar}.drop(index=${req.rowIndices[0]}).reset_index(drop=True)`
-                      ])
-                    : this.createCode([`${newVar} = ${currVar}.drop(index=[${rows}]).reset_index(drop=True)`]);
+                    ? this.createCode([`${newVar} = ${currVar}.drop(index=${req.rowIndices[0]})`])
+                    : this.createCode([`${newVar} = ${currVar}.drop(index=[${rows}])`]);
             const historyItem = {
                 type: DataWranglerCommands.Drop,
                 description: DataScience.dataWranglerDropRowDescription().format(rows),
@@ -532,9 +506,7 @@ export class DataWrangler extends DataViewer implements IDataWrangler, IDisposab
         } else if (req.targetColumns) {
             // Drop columns by column name
             const targetColumns = this.generateStringListOfColumns(req.targetColumns);
-            const code = this.createCode([
-                `${newVar} = ${currVar}.drop(columns=[${targetColumns}]).reset_index(drop=True)`
-            ]);
+            const code = this.createCode([`${newVar} = ${currVar}.drop(columns=[${targetColumns}])`]);
             const historyItem = {
                 type: DataWranglerCommands.Drop,
                 description: DataScience.dataWranglerDropColumnDescription().format(targetColumns),
@@ -665,39 +637,22 @@ export class DataWrangler extends DataViewer implements IDataWrangler, IDisposab
         const currVar = vars.currentVariableName;
         const newVar = vars.newVariableName;
 
-        // Find type of each column
-        // It is necessary so we replace the values in the columns with the correct column type
-        const { stringColumns, boolNumColumns } = await this.splitColumnTypes(req.targetColumns);
+        const value = this.getValueBasedOnType(req.value, req.valueType);
+
         const targetColumns = this.generateStringListOfColumns(req.targetColumns);
 
-        // Create replacement dictionary where key is column and value is the value that will replace Na values
-        const fillNaDict = [
-            ...stringColumns.map((c) => `'${c}': '${req.value}'`),
-            ...boolNumColumns.map((c) => `'${c}': ${req.value}`)
-        ].join(', ');
+        const setupCode = `${newVar} = ${currVar}.copy()`;
 
         // Create preview code
-        const setupCode = `${newVar} = ${currVar}.copy()`;
         const previewCodeList: string[] = [];
 
         // Need to go through each column and create a preview column for each of those columns and add it beside the original column
         if (req.isPreview) {
-            // Replace columns that have type string
-            stringColumns.forEach((col) => {
+            req.targetColumns.forEach((col) => {
                 const singleColumnPreviewCodeList = this.generatePreviewCodeList(
                     newVar,
                     col,
-                    `${newVar}[['${col}']].fillna(value='${req.value}')`
-                );
-                previewCodeList.push(...singleColumnPreviewCodeList);
-            });
-
-            // Replace columns that have type boolean or number
-            boolNumColumns.forEach((col) => {
-                const singleColumnPreviewCodeList = this.generatePreviewCodeList(
-                    newVar,
-                    col,
-                    `${newVar}[['${col}']].fillna(value=${req.value})`
+                    `${newVar}[['${col}']].fillna(value=${value})`
                 );
                 previewCodeList.push(...singleColumnPreviewCodeList);
             });
@@ -707,11 +662,13 @@ export class DataWrangler extends DataViewer implements IDataWrangler, IDisposab
         const previewCode = this.createCode([setupCode, ...previewCodeList]);
 
         // Create actual code
+        // Create replacement dictionary where key is column and value is the value that will replace Na values
+        const fillNaDict = req.targetColumns.map((c) => `'${c}': ${value}`).join(', ');
         const code = this.createCode([`${newVar} = ${currVar}.fillna({${fillNaDict}})`]);
 
         const historyItem = {
             type: DataWranglerCommands.FillNa,
-            description: DataScience.dataWranglerFillNaDescription().format(req.value.toString(), targetColumns),
+            description: DataScience.dataWranglerFillNaDescription().format(value, targetColumns),
             variableName: newVar,
             code: code,
             previewCode: previewCode,
@@ -829,24 +786,6 @@ export class DataWrangler extends DataViewer implements IDataWrangler, IDisposab
         return columns.map((col) => `'${col}': ${correctValue}`).join(', ');
     }
 
-    private async splitColumnTypes(columns: string[]) {
-        const stringColumns: string[] = [];
-        const boolNumColumns: string[] = [];
-        const dataFrameInfo = await this.dataFrameInfoPromise;
-        columns.forEach((col) => {
-            const type = dataFrameInfo?.columns?.find((c) => c.key === col)?.type;
-            if (type && type === ColumnType.String) {
-                stringColumns.push(col);
-            } else if (type && (type === ColumnType.Bool || type === ColumnType.Number)) {
-                boolNumColumns.push(col);
-            }
-        });
-        return {
-            stringColumns,
-            boolNumColumns
-        };
-    }
-
     private generatePreviewCodeList(newVar: string, col: string, columnGenerationCode: string) {
         return [
             // Find index of old column
@@ -858,12 +797,49 @@ export class DataWrangler extends DataViewer implements IDataWrangler, IDisposab
         ];
     }
 
-    private async executeNotebookCode(notebook: INotebook | undefined, code: string) {
-        await notebook?.execute(code, '', 0, uuid());
+    private async executeNotebookCode(notebook: INotebook | undefined, code: string): Promise<boolean> {
+        const cells = await notebook?.execute(code, '', 0, uuid(), undefined, false);
+        const error = this.didCellError(cells);
+        console.log('cells', cells);
+        if (error) {
+            void this.applicationShell.showErrorMessage(
+                `The previous Data Wrangler operation failed. Running the python code for the operation resulted in a ${error.name}: ${error.description}`
+            );
+            return true;
+        }
+        return false;
     }
 
-    private createCode(codeArr: string[], lineEnding = EOL) {
+    private didCellError(cells: ICell[] | undefined): { name: string; description: string } | false {
+        // Checks if cell has an error
+        // If so, return the name and description of error.
+        // If no error, return false
+        if (cells === undefined || cells.length < 1) {
+            return false;
+        }
+        const outputs = cells[0].data.outputs as nbformat.IOutput[];
+        if (outputs.length > 0 && outputs[0].output_type === 'error') {
+            return {
+                name: outputs[0].ename as string,
+                description: outputs[0].evalue as string
+            };
+        }
+        return false;
+    }
+
+    private createCode(codeArr: string[], lineEnding = EOL): string {
         // Make sure to have lineEnding at end as well
         return codeArr.join(lineEnding) + lineEnding;
+    }
+
+    private getValueBasedOnType(value: string | number | boolean, type: ColumnType): string {
+        switch (type) {
+            case ColumnType.String:
+                return `'${value}'`;
+            case ColumnType.Number:
+                return `${value}`;
+            case ColumnType.Bool:
+                return Boolean(value) ? 'True' : 'False';
+        }
     }
 }

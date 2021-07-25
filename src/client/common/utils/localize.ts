@@ -995,7 +995,7 @@ export namespace DataScience {
     );
     export const dataWranglerReplaceAllDescription = localize(
         'DataScience.dataWranglerReplaceAllDescription',
-        "Replaced all instances of '{0}' with '{1}' in column(s): {2}"
+        'Replaced all instances of {0} with {1} in column(s): {2}'
     );
     export const dataWranglerRenameColumnDescription = localize(
         'DataScience.dataWranglerRenameColumnDescription',
@@ -1035,7 +1035,7 @@ export namespace DataScience {
     );
     export const dataWranglerFillNaDescription = localize(
         'DataScience.dataWranglerFillNaDescription',
-        "Replaced missing values with: '{0}' in column(s): {1}"
+        'Replaced missing values with: {0} in column(s): {1}'
     );
     export const dataWranglerImportDescription = localize('DataScience.DataWranglerImportDescription', 'Imported data');
     export const dataWranglerStandalone = localize('DataScience.dataWranglerStandalone', 'Open just the Data Wrangler');

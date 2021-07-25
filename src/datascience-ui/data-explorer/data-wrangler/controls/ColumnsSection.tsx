@@ -7,7 +7,7 @@ import { RenameColumnsSection } from './column-operations/RenameColumnsSection';
 import { ReplaceAllColumnsSection } from './column-operations/ReplaceAllColumnsSection';
 import { FillNaSection } from './column-operations/FillNaSection';
 import { SidePanelSection } from './SidePanelSection';
-import { clearButtonStyle, dropdownStyle, dropdownStyles } from './styles';
+import { clearButtonStyle, dropdownStyles } from './styles';
 import '../controlPanel.css';
 import { DataWranglerCommands } from '../../../../client/datascience/data-viewing/data-wrangler/types';
 
@@ -135,7 +135,7 @@ export class ColumnsSection extends React.Component<IProps, IState> {
                     multiSelect={true}
                     responsiveMode={ResponsiveMode.xxxLarge}
                     label={getLocString('DataScience.dataWranglerTargetColumns', 'Target column(s)')}
-                    style={dropdownStyle}
+                    style={{width: '98%'}}
                     styles={dropdownStyles}
                     options={this.generateColumnOptions()}
                     className="dropdownTitleOverrides"
@@ -145,7 +145,7 @@ export class ColumnsSection extends React.Component<IProps, IState> {
                 <Dropdown
                     responsiveMode={ResponsiveMode.xxxLarge}
                     label={getLocString('DataScience.dataWranglerOperations', 'Operation')}
-                    style={dropdownStyle}
+                    style={{width: '98%'}}
                     styles={dropdownStyles}
                     options={this.generateOperationOptions()}
                     className="dropdownTitleOverrides"

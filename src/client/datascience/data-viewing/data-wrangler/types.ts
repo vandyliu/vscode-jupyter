@@ -7,7 +7,7 @@
 
 import { Event, WebviewPanel } from 'vscode';
 import { IDisposable } from '../../../common/types';
-import { IDataViewerDataProvider } from '../types';
+import { ColumnType, IDataViewerDataProvider } from '../types';
 
 export enum SidePanelSections {
     Summary = 'summary',
@@ -135,8 +135,10 @@ export interface IRenameColumnsRequest {
 
 export interface IReplaceAllColumnsRequest {
     targetColumns: string[];
-    oldValue: string | number | undefined;
-    newValue: string | number | undefined;
+    oldValue: string | number | boolean;
+    newValue: string | number | boolean;
+    oldValueType: ColumnType;
+    newValueType: ColumnType;
     isPreview: boolean;
 }
 export interface IDropRequest {
@@ -155,15 +157,16 @@ export interface IDropNaRequest {
 }
 
 export interface INormalizeColumnRequest {
-    start: Number;
-    end: Number;
+    start: number;
+    end: number;
     targetColumn: string;
     isPreview: boolean;
 }
 
 export interface IFillNaRequest {
     targetColumns: string[];
-    value: string | Number;
+    value: string | number;
+    valueType: ColumnType;
     isPreview: boolean;
 }
 

@@ -2,7 +2,7 @@ import { Dropdown, IDropdownOption, ResponsiveMode } from '@fluentui/react';
 import * as React from 'react';
 import { ICoerceColumnRequest } from '../../../../../client/datascience/data-viewing/data-wrangler/types';
 import { getLocString } from '../../../../react-common/locReactSide';
-import { dropdownStyle, dropdownStyles } from '../styles';
+import {  dropdownStyles } from '../styles';
 
 interface IProps {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -34,7 +34,7 @@ export class CoerceColumnsSection extends React.Component<IProps, IState> {
                 <Dropdown
                     label={getLocString('DataScience.dataWranglerNewType', 'New Type')}
                     responsiveMode={ResponsiveMode.xxxLarge}
-                    style={dropdownStyle}
+                    style={{ width: '100%' }}
                     styles={dropdownStyles}
                     options={this.getCoercableTypes()}
                     className="dropdownTitleOverrides"

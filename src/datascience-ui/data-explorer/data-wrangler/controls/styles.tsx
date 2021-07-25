@@ -21,7 +21,9 @@ const styleOverrides = {
 
 export const dropdownStyles = {
     root: {
-        color: 'var(--vscode-dropdown-foreground) !important'
+        color: 'var(--vscode-dropdown-foreground) !important',
+        marginRight: '10px',
+        marginBottom: '16px'
     },
     dropdownItems: {
         ...styleOverrides,
@@ -32,11 +34,9 @@ export const dropdownStyles = {
         }
     },
     caretDown: {
-        visibility: 'hidden' // Override the FluentUI caret and use ::after selector on the caretDownWrapper in order to match VS Code. See sliceContro.css
+        visibility: 'hidden' // Override the FluentUI caret and use ::after selector on the caretDownWrapper in order to match VS Code. See sliceControl.css
     }
 };
-
-export const dropdownStyle = { marginRight: '10px', width: '98%', marginBottom: '16px' };
 
 export const buttonStyle = {
     backgroundColor: 'var(--vscode-button-background)',
@@ -67,4 +67,4 @@ export const clearButtonStyle = {
     color: 'var(--vscode-button-secondaryForeground)'
 };
 
-export const inputStyle = { width: '100%', marginTop: '4px', marginBottom: '16px' };
+export const inputStyle = { width: '98%', marginTop: '4px', marginBottom: '16px' };

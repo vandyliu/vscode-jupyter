@@ -1,5 +1,6 @@
 import { Resizable } from 're-resizable';
 import * as React from 'react';
+import { ColumnType } from '../../../../client/datascience/data-viewing/types';
 
 interface IProps {
     title: string;
@@ -80,6 +81,15 @@ export class SidePanelSection extends React.Component<IProps, IState> {
             </details>
         );
     }
+}
+
+export function getAllColumnTypes() {
+    const types = {
+        [ColumnType.String]: 'String',
+        [ColumnType.Number]: 'Number',
+        [ColumnType.Bool]: 'Boolean',
+    }
+    return Object.keys(types).map((key) => ({ key, text: types[key as ColumnType] }));
 }
 
 export default SidePanelSection;

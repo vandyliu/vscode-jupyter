@@ -3,7 +3,7 @@ import * as React from 'react';
 import { DataWranglerCommands } from '../../../../client/datascience/data-viewing/data-wrangler/types';
 import { getLocString } from '../../../react-common/locReactSide';
 import { SidePanelSection } from './SidePanelSection';
-import { clearButtonStyle, dropdownStyle, dropdownStyles } from './styles';
+import { clearButtonStyle, dropdownStyles } from './styles';
 
 interface IProps {
     collapsed: boolean;
@@ -48,7 +48,7 @@ export class RowsSection extends React.Component<IProps, IState> {
                 <Dropdown
                     responsiveMode={ResponsiveMode.xxxLarge}
                     label={'Operation'}
-                    style={dropdownStyle}
+                    style={{width: '98%'}}
                     styles={dropdownStyles}
                     options={this.generateTransformOperations()}
                     className="dropdownTitleOverrides"
