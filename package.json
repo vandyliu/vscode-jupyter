@@ -1608,7 +1608,7 @@
                 },
                 "jupyter.enableNativeInteractiveWindow": {
                     "type": "boolean",
-                    "default": false,
+                    "default": true,
                     "description": "Enables the preview native interactive window experience. Set to false to opt back into the webview interactive window experience.",
                     "scope": "machine"
                 },
@@ -1629,9 +1629,7 @@
                     "type": "array",
                     "default": [],
                     "items": {
-                        "enum": [
-                            "CustomEditor"
-                        ]
+                        "enum": []
                     },
                     "markdownDescription": "List of experiment to opt into. If empty, user is assigned the default experiment groups. [Learn more](https://github.com/microsoft/vscode-jupyter/wiki/Experiments).",
                     "scope": "application"
@@ -1640,10 +1638,7 @@
                     "type": "array",
                     "default": [],
                     "items": {
-                        "enum": [
-                            "NativeNotebookEditor",
-                            "CustomEditor"
-                        ]
+                        "enum": []
                     },
                     "markdownDescription": "List of experiment to opt out of. If empty, user is assigned the default experiment groups. [Learn more](https://github.com/microsoft/vscode-jupyter/wiki/Experiments).",
                     "scope": "application"
@@ -2039,18 +2034,6 @@
                 "extensions": [
                     ".jl"
                 ]
-            }
-        ],
-        "notebooks": [
-            {
-                "type": "jupyter-notebook",
-                "displayName": "Jupyter Notebook (preview)",
-                "selector": [
-                    {
-                        "filenamePattern": "*.ipynb"
-                    }
-                ],
-                "priority": "option"
             }
         ],
         "notebookRenderer": [

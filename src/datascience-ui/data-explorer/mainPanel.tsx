@@ -415,7 +415,7 @@ export class MainPanel extends React.Component<IMainPanelProps, IMainPanelState>
     }
 
     private normalizeData(rows: JSONArray): ISlickRow[] {
-        // While processing rows we may encounter Inf, -Inf or NaN.
+        // While processing rows we may encounter Inf or -Inf.
         // These rows' column types will initially be 'string' or 'object' so
         // make sure we update the column types
         // Set of columns to update based on this batch of rows
@@ -432,7 +432,8 @@ export class MainPanel extends React.Component<IMainPanelProps, IMainPanelState>
                     case 'nan':
                         r[key] = NaN;
                         if (!this.columnsContainingInfOrNaN.has(key)) {
-                            columnsToUpdate.add(key);
+                            // Don't add column to columnsToUpdate just because of this because
+                            // some non-numerical columns can have NaN values if a value is missing
                             this.columnsContainingInfOrNaN.add(key);
                         }
                         break;
